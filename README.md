@@ -83,6 +83,9 @@ El proyecto también busca aplicar conceptos modernos de:
 - Air (hot reload)
 - Docker (opcional futuro)
 
+## UUID
+- github.com/google/uuid
+
 ## Arquitectura y Patrones
 
 - REST API
