@@ -15,6 +15,14 @@ func Success(data interface{}) APIResponse {
 	}
 }
 
+func SuccessWithCode(code int, data interface{}) APIResponse {
+	return APIResponse{
+		Status: "success",
+		Code:   code,
+		Data:   data,
+	}
+}
+
 func Error(code int, msg string) APIResponse {
 	return APIResponse{
 		Status:       "error",

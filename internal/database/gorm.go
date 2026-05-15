@@ -24,7 +24,9 @@ func InitGorm(cfg config.Config) error {
 		cfg.DBSSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: NewGormLogger(),
+	})
 	if err != nil {
 		return err
 	}

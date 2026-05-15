@@ -3,9 +3,8 @@ package main
 import (
 	"kai-back/internal/config"
 	"kai-back/internal/database"
+	"kai-back/routes"
 	"log"
-
-	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -19,21 +18,13 @@ func main() {
 	// init database
 	err := database.InitGorm(cfg)
 	if err != nil {
-		log.Fatal("❌ Error initializing database: ", err)
+		log.Fatal("Error initializing database: ", err)
 	}
 
-	// gin
-	router := gin.Default()
+	router := routes.SetupRouter(cfg, database.DB)
 
-	// test route
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-		})
-	})
-
-	log.Println("🚀 KAI backend API started")
-	log.Println("🚀 Server running on port:", cfg.ServerPort)
+	log.Println("KAI backend API started")
+	log.Println("Server running on port:", cfg.ServerPort)
 
 	err = router.Run(":" + cfg.ServerPort)
 	if err != nil {

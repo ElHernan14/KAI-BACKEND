@@ -9,13 +9,15 @@ import (
 )
 
 type Config struct {
-	DBHost     string
-	DBPort     int
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
-	ServerPort string
+	DBHost      string
+	DBPort      int
+	DBUser      string
+	DBPassword  string
+	DBName      string
+	DBSSLMode   string
+	ServerPort  string
+	JWTSecret   string
+	JWTTTLHours int
 }
 
 func LoadConfig() Config {
@@ -25,15 +27,18 @@ func LoadConfig() Config {
 	}
 
 	port, _ := strconv.Atoi(getEnv("DB_PORT", "5432"))
+	jwtTTLHours, _ := strconv.Atoi(getEnv("JWT_TTL_HOURS", "24"))
 
 	return Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     port,
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", "postgres"),
-		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
-		ServerPort: getEnv("SERVER_PORT", "8080"),
+		DBHost:      getEnv("DB_HOST", "localhost"),
+		DBPort:      port,
+		DBUser:      getEnv("DB_USER", "postgres"),
+		DBPassword:  getEnv("DB_PASSWORD", ""),
+		DBName:      getEnv("DB_NAME", "postgres"),
+		DBSSLMode:   getEnv("DB_SSLMODE", "disable"),
+		ServerPort:  getEnv("SERVER_PORT", "8080"),
+		JWTSecret:   getEnv("JWT_SECRET", "super_secret_key"),
+		JWTTTLHours: jwtTTLHours,
 	}
 }
 
