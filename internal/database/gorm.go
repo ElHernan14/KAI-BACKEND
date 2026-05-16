@@ -15,7 +15,7 @@ var DB *gorm.DB
 func InitGorm(cfg config.Config) error {
 
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=UTC",
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=UTC default_query_exec_mode=simple_protocol",
 		cfg.DBHost,
 		cfg.DBUser,
 		cfg.DBPassword,

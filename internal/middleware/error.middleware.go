@@ -16,7 +16,7 @@ func ErrorMiddleware() gin.HandlerFunc {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				requestID := GetRequestID(c)
-				log.Printf("request_id=%s panic=%v", requestID, recovered)
+				log.Printf("ERROR middleware | request_id=%s | panic=%v", requestID, recovered)
 
 				c.AbortWithStatusJSON(
 					http.StatusInternalServerError,
@@ -36,12 +36,12 @@ func ErrorMiddleware() gin.HandlerFunc {
 
 		var appErr errorHandler.AppError
 		if errors.As(err, &appErr) {
-			log.Printf("request_id=%s status=%d error=%s", requestID, appErr.Code, appErr.Message)
+			log.Printf("ERROR | request_id=%s | status=%d | error=%s", requestID, appErr.Code, appErr.Message)
 			c.AbortWithStatusJSON(appErr.Code, response.Error(appErr.Code, appErr.Message))
 			return
 		}
 
-		log.Printf("request_id=%s unexpected_error=%v", requestID, err)
+		log.Printf("ERROR middleware | request_id=%s | unexpected_error=%v", requestID, err)
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			response.Error(http.StatusInternalServerError, errorHandler.ErrInternal.Error()),

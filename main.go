@@ -12,7 +12,7 @@ func main() {
 	cfg := config.LoadConfig()
 
 	// setup logger
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetFlags(log.LstdFlags)
 	log.SetPrefix("[KAI-API]")
 
 	// init database

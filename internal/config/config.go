@@ -27,7 +27,7 @@ func LoadConfig() Config {
 	}
 
 	port, _ := strconv.Atoi(getEnv("DB_PORT", "5432"))
-	jwtTTLHours, _ := strconv.Atoi(getEnv("JWT_TTL_HOURS", "24"))
+	jwtTTLHours, _ := strconv.Atoi(getEnv("JWT_TTL_HOURS", "1"))
 
 	return Config{
 		DBHost:      getEnv("DB_HOST", "localhost"),

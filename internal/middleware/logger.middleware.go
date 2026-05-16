@@ -34,6 +34,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 			latency.Seconds(),
 			c.ClientIP(),
 		)
+		log.Println("----------------------------------------")
 	}
 }
 
