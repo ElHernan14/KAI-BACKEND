@@ -12,12 +12,11 @@ type LoginRequest struct {
 }
 
 type AuthUserResponse struct {
-	ID    string `json:"id"`
 	Name  string `json:"nombre"`
 	Email string `json:"email"`
 }
 
 type AuthResponse struct {
 	Token string           `json:"token"`
-	User  AuthUserResponse `json:"user"`
+	User  AuthUserResponse `json:"usuario"`
 }

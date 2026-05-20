@@ -115,7 +115,6 @@ func (s *Service) buildAuthResponse(user *usersmodel.User) (*authdto.AuthRespons
 	return &authdto.AuthResponse{
 		Token: token,
 		User: authdto.AuthUserResponse{
-			ID:    user.ID.String(),
 			Name:  user.Name,
 			Email: user.Email,
 		},
