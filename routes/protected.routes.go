@@ -11,6 +11,6 @@ func RegisterProtectedRoutes(api *gin.RouterGroup, container *AppContainer) {
 	protected := api.Group("")
 	protected.Use(container.AuthMiddleware)
 
-	users.RegisterRoutes(protected.Group("/users"))
+	users.RegisterRoutes(protected.Group("/users"), container.UserController)
 	habits.RegisterRoutes(protected.Group("/habits"))
 }

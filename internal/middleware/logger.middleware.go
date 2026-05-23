@@ -43,7 +43,7 @@ func GetRequestID(c *gin.Context) string {
 		return requestID
 	}
 
-	if requestID, ok := c.Get(RequestIDKey); ok {
+	if requestID, ok := c.Get(string(appcontext.RequestIDKey)); ok {
 		if value, ok := requestID.(string); ok {
 			return value
 		}

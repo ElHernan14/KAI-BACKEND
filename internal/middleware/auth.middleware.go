@@ -12,8 +12,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const AuthUserKey = "auth_user"
-
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -68,7 +66,7 @@ func abortUnauthorized(c *gin.Context, message string) {
 }
 
 func SetAuthUser(c *gin.Context, user appcontext.AuthUser) {
-	c.Set(AuthUserKey, user)
+	c.Set(string(appcontext.AuthUserKey), user)
 
 	ctx := appcontext.WithAuthUser(c.Request.Context(), user)
 	c.Request = c.Request.WithContext(ctx)
@@ -79,7 +77,7 @@ func GetAuthUser(c *gin.Context) (appcontext.AuthUser, bool) {
 		return user, true
 	}
 
-	value, ok := c.Get(AuthUserKey)
+	value, ok := c.Get(string(appcontext.AuthUserKey))
 	if !ok {
 		return appcontext.AuthUser{}, false
 	}

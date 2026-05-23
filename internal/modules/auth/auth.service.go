@@ -7,40 +7,42 @@ import (
 	"time"
 
 	authdto "kai-back/internal/modules/auth/dto"
-	kaimodel "kai-back/internal/modules/kai/models"
+	authrepository "kai-back/internal/modules/auth/repository"
 	usersmodel "kai-back/internal/modules/users/models"
+	userrepository "kai-back/internal/modules/users/repository"
+	initializerUser "kai-back/internal/services/user_initializer"
 	authshared "kai-back/internal/shared/auth"
 	errorHandler "kai-back/internal/shared/errors"
 )
 
-type RepositoryPort interface {
-	FindUserByEmail(ctx context.Context, email string) (*usersmodel.User, error)
-	RegisterUserWithInitialState(
-		ctx context.Context,
-		user *usersmodel.User,
-		config *usersmodel.UserConfiguration,
-		kaiState *kaimodel.KaiState,
-	) error
-}
-
 type Service struct {
-	repository RepositoryPort
-	jwtSecret  string
-	jwtTTL     time.Duration
+	repository      authrepository.AuthRepository
+	userRepository  userrepository.UsersRepository
+	initializerUser initializerUser.Service
+	jwtSecret       string
+	jwtTTL          time.Duration
 }
 
-func NewService(repository RepositoryPort, jwtSecret string, jwtTTL time.Duration) *Service {
+func NewService(
+	repository authrepository.AuthRepository,
+	userRepository userrepository.UsersRepository,
+	initializerUser initializerUser.Service,
+	jwtSecret string,
+	jwtTTL time.Duration,
+) *Service {
 	return &Service{
-		repository: repository,
-		jwtSecret:  jwtSecret,
-		jwtTTL:     jwtTTL,
+		repository:      repository,
+		userRepository:  userRepository,
+		initializerUser: initializerUser,
+		jwtSecret:       jwtSecret,
+		jwtTTL:          jwtTTL,
 	}
 }
 
 func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*authdto.AuthResponse, error) {
 	email := normalizeEmail(req.Email)
 
-	existingUser, err := s.repository.FindUserByEmail(ctx, email)
+	existingUser, err := s.userRepository.FindUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -62,26 +64,7 @@ func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*a
 		InactiveDays: 0,
 	}
 
-	config := &usersmodel.UserConfiguration{
-		NotificationsEnabled:   true,
-		SoundsEnabled:          true,
-		ShowStreaks:            true,
-		DiscreteMode:           false,
-		KaiIntensity:           "normal",
-		LockWithPIN:            false,
-		AllowEmotionalMessages: true,
-	}
-
-	kaiState := &kaimodel.KaiState{
-		CurrentState:        "con_ganas_de_empezar",
-		CurrentStage:        "cachorro",
-		Energy:              100,
-		DaysWithoutActivity: 0,
-		RecoveryMode:        false,
-		BondLevel:           1,
-	}
-
-	if err := s.repository.RegisterUserWithInitialState(ctx, user, config, kaiState); err != nil {
+	if err := s.initializerUser.InitializeNewUser(ctx, user); err != nil {
 		return nil, err
 	}
 
@@ -91,7 +74,7 @@ func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*a
 func (s *Service) Login(ctx context.Context, req authdto.LoginRequest) (*authdto.AuthResponse, error) {
 	email := normalizeEmail(req.Email)
 
-	user, err := s.repository.FindUserByEmail(ctx, email)
+	user, err := s.userRepository.FindUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}

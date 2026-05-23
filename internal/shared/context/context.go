@@ -1,12 +1,14 @@
 package appcontext
 
-import "context"
+import (
+	"context"
+)
 
 type contextKey string
 
 const (
-	requestIDKey contextKey = "request_id"
-	authUserKey  contextKey = "auth_user"
+	RequestIDKey contextKey = "request_id"
+	AuthUserKey  contextKey = "auth_user"
 )
 
 type AuthUser struct {
@@ -15,20 +17,20 @@ type AuthUser struct {
 }
 
 func WithRequestID(ctx context.Context, requestID string) context.Context {
-	return context.WithValue(ctx, requestIDKey, requestID)
+	return context.WithValue(ctx, RequestIDKey, requestID)
 }
 
 func GetRequestID(ctx context.Context) (string, bool) {
-	requestID, ok := ctx.Value(requestIDKey).(string)
+	requestID, ok := ctx.Value(RequestIDKey).(string)
 	return requestID, ok
 }
 
 func WithAuthUser(ctx context.Context, user AuthUser) context.Context {
-	return context.WithValue(ctx, authUserKey, user)
+	return context.WithValue(ctx, AuthUserKey, user)
 }
 
 func GetAuthUser(ctx context.Context) (AuthUser, bool) {
-	user, ok := ctx.Value(authUserKey).(AuthUser)
+	user, ok := ctx.Value(AuthUserKey).(AuthUser)
 	return user, ok
 }
 

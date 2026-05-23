@@ -9,7 +9,6 @@ import (
 
 const (
 	RequestIDHeader = "X-Request-ID"
-	RequestIDKey    = "request_id"
 )
 
 func RequestIDMiddleware() gin.HandlerFunc {
@@ -19,7 +18,7 @@ func RequestIDMiddleware() gin.HandlerFunc {
 			requestID = uuid.NewString()
 		}
 
-		c.Set(RequestIDKey, requestID)
+		c.Set(string(appcontext.RequestIDKey), requestID)
 		c.Writer.Header().Set(RequestIDHeader, requestID)
 
 		ctx := appcontext.WithRequestID(c.Request.Context(), requestID)
