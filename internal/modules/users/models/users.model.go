@@ -2,6 +2,7 @@ package usersmodel
 
 import (
 	kaimodel "kai-back/internal/modules/kai/models"
+	xpmodel "kai-back/internal/modules/xp/models"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,9 @@ type User struct {
 
 	Configuration UserConfiguration `gorm:"foreignKey:UserID"`
 	KaiState      kaimodel.KaiState `gorm:"foreignKey:UserID"`
+
+	XPCategory    []xpmodel.UserXP
+	KaiAttributes []kaimodel.KaiAttribute
 }
 
 func (User) TableName() string {

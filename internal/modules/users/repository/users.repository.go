@@ -47,6 +47,9 @@ func (r *Repository) FindMeByID(
 		WithContext(ctx).
 		Preload("Configuration").
 		Preload("KaiState").
+		Preload("KaiState.DominantAttribute").
+		Preload("XPCategory.Category").
+		Preload("KaiAttributes.AttributeType").
 		First(&user, "id = ?", userID).
 		Error
 
@@ -93,5 +96,19 @@ func (r *Repository) Update(
 ) error {
 	return r.db.WithContext(ctx).
 		Save(user).
+		Error
+}
+
+func (r *Repository) UpdatePassword(
+	ctx context.Context,
+	userID uuid.UUID,
+	passwordHash string,
+) error {
+
+	return r.db.
+		WithContext(ctx).
+		Model(&usersmodel.User{}).
+		Where("id = ?", userID).
+		Update("password_hash", passwordHash).
 		Error
 }

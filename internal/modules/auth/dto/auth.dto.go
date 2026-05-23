@@ -17,6 +17,5 @@ type AuthUserResponse struct {
 }
 
 type AuthResponse struct {
-	Token string           `json:"token"`
-	User  AuthUserResponse `json:"usuario"`
+	Token string `json:"token"`
 }

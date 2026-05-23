@@ -105,9 +105,9 @@ func (s *service) initializeKaiAttributes(
 	for _, attrType := range attributeTypes {
 
 		attributes = append(attributes, kaimodel.KaiAttribute{
-			UserID: userID,
-			TypeID: attrType.ID,
-			Value:  0,
+			UserID:          userID,
+			AttributeTypeID: attrType.ID,
+			Value:           0,
 		})
 	}
 

@@ -23,6 +23,8 @@ type KaiState struct {
 	DominantAttributeID *uuid.UUID `gorm:"column:atributo_dominante_id;type:uuid" json:"atributo_dominante_id,omitempty"`
 	BondLevel           int        `gorm:"column:nivel_vinculo;default:1" json:"nivel_vinculo"`
 	LastEvolution       *time.Time `gorm:"column:ultima_evolucion" json:"ultima_evolucion,omitempty"`
+
+	DominantAttribute *KaiAttributeType `gorm:"foreignKey:DominantAttributeID"`
 }
 
 func (KaiState) TableName() string {

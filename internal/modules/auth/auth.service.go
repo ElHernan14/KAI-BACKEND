@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -44,15 +46,17 @@ func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*a
 
 	existingUser, err := s.userRepository.FindUserByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		log.Println("error getting user by email:", err)
+		return nil, errorHandler.NewAppError(http.StatusInternalServerError, fmt.Sprintf("No se pudo obtener usuario con email: %s", email))
 	}
 	if existingUser != nil {
-		return nil, errorHandler.NewAppError(http.StatusConflict, "email ya registrado")
+		return nil, errorHandler.NewAppError(http.StatusConflict, "Email ya registrado.")
 	}
 
 	passwordHash, err := authshared.HashPassword(req.Password)
 	if err != nil {
-		return nil, err
+		log.Println("error hashing password user:", err)
+		return nil, errorHandler.NewAppError(http.StatusInternalServerError, "No se pudo registrar usuario.")
 	}
 
 	user := &usersmodel.User{
@@ -76,14 +80,15 @@ func (s *Service) Login(ctx context.Context, req authdto.LoginRequest) (*authdto
 
 	user, err := s.userRepository.FindUserByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		log.Println("error getting user by email:", err)
+		return nil, errorHandler.NewAppError(http.StatusInternalServerError, fmt.Sprintf("No se pudo obtener usuario con email: %s", email))
 	}
 	if user == nil {
-		return nil, errorHandler.NewAppError(http.StatusUnauthorized, "credenciales invalidas")
+		return nil, errorHandler.NewAppError(http.StatusUnauthorized, "Credenciales invalidas")
 	}
 
 	if err := authshared.CheckPassword(req.Password, user.PasswordHash); err != nil {
-		return nil, errorHandler.NewAppError(http.StatusUnauthorized, "credenciales invalidas")
+		return nil, errorHandler.NewAppError(http.StatusUnauthorized, "Credenciales invalidas")
 	}
 
 	return s.buildAuthResponse(user)
@@ -92,15 +97,12 @@ func (s *Service) Login(ctx context.Context, req authdto.LoginRequest) (*authdto
 func (s *Service) buildAuthResponse(user *usersmodel.User) (*authdto.AuthResponse, error) {
 	token, err := authshared.GenerateToken(user.ID.String(), user.Email, s.jwtSecret, s.jwtTTL)
 	if err != nil {
-		return nil, err
+		log.Println("error generating user token:", err)
+		return nil, errorHandler.NewAppError(http.StatusUnauthorized, "Credenciales invalidas")
 	}
 
 	return &authdto.AuthResponse{
 		Token: token,
-		User: authdto.AuthUserResponse{
-			Name:  user.Name,
-			Email: user.Email,
-		},
 	}, nil
 }
 
