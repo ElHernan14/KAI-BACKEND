@@ -15,7 +15,7 @@ import (
 
 type ServicePort interface {
 	GetMe(ctx context.Context, userID uuid.UUID) (*usersdto.MeResponse, error)
-	UpdateMe(ctx context.Context, userID uuid.UUID, req usersdto.UpdateMeRequest) (*usersdto.MeResponse, error)
+	UpdateMe(ctx context.Context, userID uuid.UUID, req usersdto.UpdateMeRequest) error
 	ChangePassword(ctx context.Context, userID uuid.UUID, req usersdto.ChangePasswordRequest) error
 }
 
@@ -98,19 +98,22 @@ func (ctrl *Controller) UpdateMe(c *gin.Context) {
 		return
 	}
 
-	responseData, err := ctrl.service.UpdateMe(
+	errService := ctrl.service.UpdateMe(
 		c.Request.Context(),
 		userID,
 		req,
 	)
-	if err != nil {
+	if errService != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	c.JSON(
 		http.StatusOK,
-		response.Success(responseData),
+		response.SuccessWithCode(
+			http.StatusOK,
+			"perfil actualizado correctamente",
+		),
 	)
 }
 

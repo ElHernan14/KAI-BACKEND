@@ -140,12 +140,12 @@ func (s *Service) UpdateMe(
 	ctx context.Context,
 	userID uuid.UUID,
 	req usersdto.UpdateMeRequest,
-) (*usersdto.MeResponse, error) {
+) error {
 
 	user, err := s.repository.FindUserByID(ctx, userID)
 	if user == nil || err != nil {
 		log.Println("error fetching user:", err)
-		return nil, errorHandler.NewAppError(
+		return errorHandler.NewAppError(
 			http.StatusNotFound,
 			"usuario no encontrado",
 		)
@@ -158,12 +158,7 @@ func (s *Service) UpdateMe(
 		user.BaseProfile = &profile
 	}
 
-	if err := s.repository.Update(ctx, user); err != nil {
-		log.Println("error updating user:", err)
-		return nil, errorHandler.NewAppError(http.StatusInternalServerError, "No se pudo actualizar usuario.")
-	}
-
-	return s.GetMe(ctx, userID)
+	return s.repository.Update(ctx, user)
 }
 
 func (s *Service) ChangePassword(

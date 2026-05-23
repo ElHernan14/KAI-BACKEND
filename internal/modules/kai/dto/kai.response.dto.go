@@ -15,7 +15,7 @@ type KaiStateSummary struct {
 	RecoveryMode      bool                       `json:"modo_recuperacion"`
 	DominantAttribute *DominantAttributeResponse `json:"atributoDominante"`
 
-	LastEvolution *time.Time `json:"ultima_evolucion,omitempty"`
+	LastEvolution *time.Time `json:"ultima_evolucion"`
 }
 
 type KaiAttributeSummary struct {
