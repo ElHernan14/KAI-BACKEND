@@ -1,6 +1,7 @@
 package usersmodel
 
 import (
+	habitsmodel "kai-back/internal/modules/habits/models"
 	kaimodel "kai-back/internal/modules/kai/models"
 	xpmodel "kai-back/internal/modules/xp/models"
 	"time"
@@ -24,6 +25,7 @@ type User struct {
 
 	XPCategory    []xpmodel.UserXP
 	KaiAttributes []kaimodel.KaiAttribute
+	UserHabits    []habitsmodel.UserHabit `gorm:"foreignKey:UserID"`
 }
 
 func (User) TableName() string {

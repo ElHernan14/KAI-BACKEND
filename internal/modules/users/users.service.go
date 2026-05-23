@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	habitsdto "kai-back/internal/modules/habits/dto"
 	kaidto "kai-back/internal/modules/kai/dto"
 	usersdto "kai-back/internal/modules/users/dto"
 	userRepository "kai-back/internal/modules/users/repository"
@@ -74,14 +75,6 @@ func (s *Service) GetMe(
 
 	//Construyo response final
 	response := &usersdto.MeResponse{
-		ID:           user.ID,
-		Name:         user.Name,
-		Email:        user.Email,
-		ProfileBase:  user.BaseProfile,
-		KaiStage:     user.KaiStage,
-		GlobalStreak: user.GlobalStreak,
-		InactiveDays: user.InactiveDays,
-
 		XP:         xpResponse,
 		Attributes: attributesResponse,
 	}
@@ -105,11 +98,23 @@ func (s *Service) GetMe(
 		}
 	}
 
+	//Agrego usuario
+	response.User = &usersdto.UserResponse{
+		Name:         user.Name,
+		Email:        user.Email,
+		ProfileBase:  user.BaseProfile,
+		KaiStage:     user.KaiStage,
+		GlobalStreak: user.GlobalStreak,
+		InactiveDays: user.InactiveDays,
+	}
+
 	//Agrego estado kai
 	response.KaiState = &kaidto.KaiStateSummary{
 		CurrentState:      user.KaiState.CurrentState,
 		CurrentStage:      user.KaiState.CurrentStage,
 		CurrentMode:       currentMode,
+		LastMessage:       user.KaiState.LastMessage,
+		KaiImage:          user.KaiState.KaiImage,
 		Energy:            user.KaiState.Energy,
 		BondLevel:         user.KaiState.BondLevel,
 		RecoveryMode:      user.KaiState.RecoveryMode,
@@ -132,6 +137,42 @@ func (s *Service) GetMe(
 		formatted := user.Configuration.ReminderTime.Format("15:04")
 		response.Configuration.ReminderTime = &formatted
 	}
+
+	//Construye los habitos del usuario
+	var habitsResponse []habitsdto.UserHabitResponse
+
+	for _, habit := range user.UserHabits {
+
+		var records []habitsdto.HabitRecordResponse
+
+		for _, record := range habit.HabitRecords {
+			records = append(records, habitsdto.HabitRecordResponse{
+				Fecha:           record.Fecha,
+				Completado:      record.Completado,
+				ValorRegistrado: record.ValorRegistrado,
+				XPGanada:        record.XPGanada,
+			})
+		}
+
+		habitsResponse = append(habitsResponse, habitsdto.UserHabitResponse{
+			ID:          habit.ID.String(),
+			Name:        habit.HabitCatalog.Name,
+			Description: habit.HabitCatalog.Description,
+
+			Category:   habit.HabitCatalog.Category,
+			CareType:   habit.HabitCatalog.CareType,
+			Difficulty: habit.HabitCatalog.Difficulty,
+
+			BaseXP: habit.HabitCatalog.BaseXP,
+
+			Active: habit.Active,
+
+			HabitImage: habit.HabitCatalog.HabitImage,
+
+			Records: records,
+		})
+	}
+	response.Habits = habitsResponse
 
 	return response, nil
 }

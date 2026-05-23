@@ -50,6 +50,12 @@ func (r *Repository) FindMeByID(
 		Preload("KaiState.DominantAttribute").
 		Preload("XPCategory.Category").
 		Preload("KaiAttributes.AttributeType").
+		Preload("UserHabits").
+		Preload("UserHabits.HabitCatalog").
+		Preload(
+			"UserHabits.HabitRecords",
+			"fecha = CURRENT_DATE",
+		).
 		First(&user, "id = ?", userID).
 		Error
 

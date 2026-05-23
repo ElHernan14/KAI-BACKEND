@@ -1,25 +1,28 @@
 package usersdto
 
 import (
+	habitsdto "kai-back/internal/modules/habits/dto"
 	kaiStateDto "kai-back/internal/modules/kai/dto"
 	kaidto "kai-back/internal/modules/kai/dto"
 	xpdto "kai-back/internal/modules/xp/dto"
-
-	"github.com/google/uuid"
 )
 
 type MeResponse struct {
-	ID            uuid.UUID                    `json:"id"`
-	Name          string                       `json:"nombre"`
-	Email         string                       `json:"email"`
-	ProfileBase   *string                      `json:"perfil_base"`
-	KaiStage      string                       `json:"etapa_kai"`
-	GlobalStreak  int                          `json:"racha_global"`
-	InactiveDays  int                          `json:"dias_inactivo"`
-	KaiState      *kaiStateDto.KaiStateSummary `json:"estado_kai"`
-	Configuration *UserConfigResponse          `json:"configuracion_usuario"`
-	XP            []xpdto.UserXPSummary        `json:"xp_usuario"`
-	Attributes    []kaidto.KaiAttributeSummary `json:"atributos_kai"`
+	User          *UserResponse                 `json:"usuario"`
+	KaiState      *kaiStateDto.KaiStateSummary  `json:"estado_kai"`
+	Configuration *UserConfigResponse           `json:"configuracion_usuario"`
+	XP            []xpdto.UserXPSummary         `json:"xp_usuario"`
+	Attributes    []kaidto.KaiAttributeSummary  `json:"atributos_kai"`
+	Habits        []habitsdto.UserHabitResponse `json:"habitos"`
+}
+
+type UserResponse struct {
+	Name         string  `json:"nombre"`
+	Email        string  `json:"email"`
+	ProfileBase  *string `json:"perfil_base"`
+	KaiStage     string  `json:"etapa_kai"`
+	GlobalStreak int     `json:"racha_global"`
+	InactiveDays int     `json:"dias_inactivo"`
 }
 
 type UserConfigResponse struct {
