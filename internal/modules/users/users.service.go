@@ -87,7 +87,10 @@ func (s *Service) GetMe(
 	}
 
 	//Agrego atributo dominante de Kai state
-	var dominantAttribute *kaidto.DominantAttributeResponse
+	var dominantAttribute *kaidto.DominantAttributeResponse = &kaidto.DominantAttributeResponse{
+		ID:   uuid.Nil,
+		Name: "",
+	}
 	//Agrego referencia de currentMode
 	currentMode := ""
 	if user.KaiState.CurrentMode != nil || user.KaiState.DominantAttribute != nil {
