@@ -2,11 +2,8 @@ package users
 
 import (
 	"context"
-	habitsdto "kai-back/internal/modules/habits/dto"
-	kaidto "kai-back/internal/modules/kai/dto"
 	usersdto "kai-back/internal/modules/users/dto"
 	userRepository "kai-back/internal/modules/users/repository"
-	xpdto "kai-back/internal/modules/xp/dto"
 	authshared "kai-back/internal/shared/auth"
 	errorHandler "kai-back/internal/shared/errors"
 	"log"
@@ -38,65 +35,43 @@ func (s *Service) GetMe(
 	}
 
 	//Construyo XP response
-	xpResponse := make([]xpdto.UserXPSummary, 0)
+	// xpResponse := make([]xpdto.UserXPSummary, 0)
 
-	for _, xp := range user.XPCategory {
+	// for _, xp := range user.XPCategory {
 
-		categoryName := ""
+	// 	categoryName := ""
 
-		if xp.Category != nil {
-			categoryName = xp.Category.Name
-		}
+	// 	if xp.Category != nil {
+	// 		categoryName = xp.Category.Name
+	// 	}
 
-		xpResponse = append(xpResponse, xpdto.UserXPSummary{
-			CategoryID:   xp.CategoryID.String(),
-			CategoryName: categoryName,
-			Value:        xp.Value,
-		})
-	}
+	// 	xpResponse = append(xpResponse, xpdto.UserXPSummary{
+	// 		CategoryID:   xp.CategoryID.String(),
+	// 		CategoryName: categoryName,
+	// 		Value:        xp.Value,
+	// 	})
+	// }
 
-	//Construyo Attributes Kai response
-	attributesResponse := make([]kaidto.KaiAttributeSummary, 0)
+	// //Construyo Attributes Kai response
+	// attributesResponse := make([]kaidto.KaiAttributeSummary, 0)
 
-	for _, attribute := range user.KaiAttributes {
+	// for _, attribute := range user.KaiAttributes {
 
-		attributeName := ""
+	// 	attributeName := ""
 
-		if attribute.AttributeType != nil {
-			attributeName = attribute.AttributeType.Name
-		}
+	// 	if attribute.AttributeType != nil {
+	// 		attributeName = attribute.AttributeType.Name
+	// 	}
 
-		attributesResponse = append(attributesResponse, kaidto.KaiAttributeSummary{
-			AttributeID:   attribute.AttributeTypeID.String(),
-			AttributeName: attributeName,
-			Value:         attribute.Value,
-		})
-	}
+	// 	attributesResponse = append(attributesResponse, kaidto.KaiAttributeSummary{
+	// 		AttributeID:   attribute.AttributeTypeID.String(),
+	// 		AttributeName: attributeName,
+	// 		Value:         attribute.Value,
+	// 	})
+	// }
 
 	//Construyo response final
-	response := &usersdto.MeResponse{
-		XP:         xpResponse,
-		Attributes: attributesResponse,
-	}
-
-	//Agrego atributo dominante de Kai state
-	var dominantAttribute *kaidto.DominantAttributeResponse = &kaidto.DominantAttributeResponse{
-		ID:   uuid.Nil,
-		Name: "",
-	}
-	//Agrego referencia de currentMode
-	currentMode := ""
-	if user.KaiState.CurrentMode != nil || user.KaiState.DominantAttribute != nil {
-		if user.KaiState.CurrentMode != nil {
-			currentMode = *user.KaiState.CurrentMode
-		}
-		if user.KaiState.DominantAttribute != nil {
-			dominantAttribute = &kaidto.DominantAttributeResponse{
-				ID:   user.KaiState.DominantAttribute.ID,
-				Name: user.KaiState.DominantAttribute.Name,
-			}
-		}
-	}
+	response := &usersdto.MeResponse{}
 
 	//Agrego usuario
 	response.User = &usersdto.UserResponse{
@@ -106,20 +81,6 @@ func (s *Service) GetMe(
 		KaiStage:     user.KaiStage,
 		GlobalStreak: user.GlobalStreak,
 		InactiveDays: user.InactiveDays,
-	}
-
-	//Agrego estado kai
-	response.KaiState = &kaidto.KaiStateSummary{
-		CurrentState:      user.KaiState.CurrentState,
-		CurrentStage:      user.KaiState.CurrentStage,
-		CurrentMode:       currentMode,
-		LastMessage:       user.KaiState.LastMessage,
-		KaiImage:          user.KaiState.KaiImage,
-		Energy:            user.KaiState.Energy,
-		BondLevel:         user.KaiState.BondLevel,
-		RecoveryMode:      user.KaiState.RecoveryMode,
-		DominantAttribute: dominantAttribute,
-		LastEvolution:     user.KaiState.LastEvolution,
 	}
 
 	//Agrego user_configuracion
@@ -139,40 +100,39 @@ func (s *Service) GetMe(
 	}
 
 	//Construye los habitos del usuario
-	var habitsResponse []habitsdto.UserHabitResponse
+	// var habitsResponse []habitsdto.UserHabitResponse
 
-	for _, habit := range user.UserHabits {
+	// for _, habit := range user.UserHabits {
 
-		var records []habitsdto.HabitRecordResponse
+	// 	var records []habitsdto.HabitRecordResponse
 
-		for _, record := range habit.HabitRecords {
-			records = append(records, habitsdto.HabitRecordResponse{
-				Fecha:           record.Fecha,
-				Completado:      record.Completado,
-				ValorRegistrado: record.ValorRegistrado,
-				XPGanada:        record.XPGanada,
-			})
-		}
+	// 	for _, record := range habit.HabitRecords {
+	// 		records = append(records, habitsdto.HabitRecordResponse{
+	// 			Fecha:           record.Fecha,
+	// 			Completado:      record.Completado,
+	// 			ValorRegistrado: record.ValorRegistrado,
+	// 			XPGanada:        record.XPGanada,
+	// 		})
+	// 	}
 
-		habitsResponse = append(habitsResponse, habitsdto.UserHabitResponse{
-			ID:          habit.ID.String(),
-			Name:        habit.HabitCatalog.Name,
-			Description: habit.HabitCatalog.Description,
+	// 	habitsResponse = append(habitsResponse, habitsdto.UserHabitResponse{
+	// 		ID:          habit.ID.String(),
+	// 		Name:        habit.HabitCatalog.Name,
+	// 		Description: habit.HabitCatalog.Description,
 
-			Category:   habit.HabitCatalog.Category,
-			CareType:   habit.HabitCatalog.CareType,
-			Difficulty: habit.HabitCatalog.Difficulty,
+	// 		Category:   habit.HabitCatalog.Category,
+	// 		CareType:   habit.HabitCatalog.CareType,
+	// 		Difficulty: habit.HabitCatalog.Difficulty,
 
-			BaseXP: habit.HabitCatalog.BaseXP,
+	// 		BaseXP: habit.HabitCatalog.BaseXP,
 
-			Active: habit.Active,
+	// 		Active: habit.Active,
 
-			HabitImage: habit.HabitCatalog.HabitImage,
+	// 		HabitImage: habit.HabitCatalog.HabitImage,
 
-			Records: records,
-		})
-	}
-	response.Habits = habitsResponse
+	// 		Records: records,
+	// 	})
+	// }
 
 	return response, nil
 }
