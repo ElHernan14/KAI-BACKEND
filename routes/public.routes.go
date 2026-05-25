@@ -9,5 +9,9 @@ import (
 func RegisterPublicRoutes(api *gin.RouterGroup, container *AppContainer) {
 	api.GET("/health", healthHandler)
 
-	authmodule.RegisterRoutes(api.Group("/auth"), container.AuthController)
+	authmodule.RegisterRoutes(
+		api.Group("/auth"),
+		container.AuthController,
+		container.AuthMiddleware,
+	)
 }

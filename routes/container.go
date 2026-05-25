@@ -7,6 +7,8 @@ import (
 	"kai-back/internal/middleware"
 	authmodule "kai-back/internal/modules/auth"
 	authrepository "kai-back/internal/modules/auth/repository"
+	homemodule "kai-back/internal/modules/home"
+	homerepository "kai-back/internal/modules/home/repository"
 	kairepository "kai-back/internal/modules/kai/repository"
 	usermodule "kai-back/internal/modules/users"
 	userrepository "kai-back/internal/modules/users/repository"
@@ -19,6 +21,7 @@ import (
 
 type AppContainer struct {
 	AuthController *authmodule.Controller
+	HomeController *homemodule.Controller
 	UserController *usermodule.Controller
 	AuthMiddleware gin.HandlerFunc
 }
@@ -45,13 +48,17 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 		time.Duration(cfg.JWTTTLHours)*time.Hour,
 	)
 	userService := usermodule.NewService(userRepository)
+	homeRepository := homerepository.NewRepository(db)
+	homeService := homemodule.NewService(homeRepository)
 
 	//controllers
 	authController := authmodule.NewController(authService)
+	homeController := homemodule.NewController(homeService)
 	userController := usermodule.NewController(userService)
 
 	return &AppContainer{
 		AuthController: authController,
+		HomeController: homeController,
 		UserController: userController,
 		AuthMiddleware: middleware.AuthMiddleware(cfg.JWTSecret),
 	}

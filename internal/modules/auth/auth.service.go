@@ -106,6 +106,19 @@ func (s *Service) buildAuthResponse(user *usersmodel.User) (*authdto.AuthRespons
 	}, nil
 }
 
+func (s *Service) RenewToken(userID string, email string) (*authdto.ValidateTokenResponse, error) {
+	token, err := authshared.GenerateToken(userID, email, s.jwtSecret, s.jwtTTL)
+	if err != nil {
+		log.Println("error renewing user token:", err)
+		return nil, errorHandler.NewAppError(http.StatusInternalServerError, "No se pudo renovar token")
+	}
+
+	return &authdto.ValidateTokenResponse{
+		Valid: true,
+		Token: token,
+	}, nil
+}
+
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }

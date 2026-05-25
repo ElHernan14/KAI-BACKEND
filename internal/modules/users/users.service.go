@@ -34,42 +34,6 @@ func (s *Service) GetMe(
 		return nil, errorHandler.NewAppError(http.StatusNotFound, "No se encontró el usuario")
 	}
 
-	//Construyo XP response
-	// xpResponse := make([]xpdto.UserXPSummary, 0)
-
-	// for _, xp := range user.XPCategory {
-
-	// 	categoryName := ""
-
-	// 	if xp.Category != nil {
-	// 		categoryName = xp.Category.Name
-	// 	}
-
-	// 	xpResponse = append(xpResponse, xpdto.UserXPSummary{
-	// 		CategoryID:   xp.CategoryID.String(),
-	// 		CategoryName: categoryName,
-	// 		Value:        xp.Value,
-	// 	})
-	// }
-
-	// //Construyo Attributes Kai response
-	// attributesResponse := make([]kaidto.KaiAttributeSummary, 0)
-
-	// for _, attribute := range user.KaiAttributes {
-
-	// 	attributeName := ""
-
-	// 	if attribute.AttributeType != nil {
-	// 		attributeName = attribute.AttributeType.Name
-	// 	}
-
-	// 	attributesResponse = append(attributesResponse, kaidto.KaiAttributeSummary{
-	// 		AttributeID:   attribute.AttributeTypeID.String(),
-	// 		AttributeName: attributeName,
-	// 		Value:         attribute.Value,
-	// 	})
-	// }
-
 	//Construyo response final
 	response := &usersdto.MeResponse{}
 
@@ -98,41 +62,6 @@ func (s *Service) GetMe(
 		formatted := user.Configuration.ReminderTime.Format("15:04")
 		response.Configuration.ReminderTime = &formatted
 	}
-
-	//Construye los habitos del usuario
-	// var habitsResponse []habitsdto.UserHabitResponse
-
-	// for _, habit := range user.UserHabits {
-
-	// 	var records []habitsdto.HabitRecordResponse
-
-	// 	for _, record := range habit.HabitRecords {
-	// 		records = append(records, habitsdto.HabitRecordResponse{
-	// 			Fecha:           record.Fecha,
-	// 			Completado:      record.Completado,
-	// 			ValorRegistrado: record.ValorRegistrado,
-	// 			XPGanada:        record.XPGanada,
-	// 		})
-	// 	}
-
-	// 	habitsResponse = append(habitsResponse, habitsdto.UserHabitResponse{
-	// 		ID:          habit.ID.String(),
-	// 		Name:        habit.HabitCatalog.Name,
-	// 		Description: habit.HabitCatalog.Description,
-
-	// 		Category:   habit.HabitCatalog.Category,
-	// 		CareType:   habit.HabitCatalog.CareType,
-	// 		Difficulty: habit.HabitCatalog.Difficulty,
-
-	// 		BaseXP: habit.HabitCatalog.BaseXP,
-
-	// 		Active: habit.Active,
-
-	// 		HabitImage: habit.HabitCatalog.HabitImage,
-
-	// 		Records: records,
-	// 	})
-	// }
 
 	return response, nil
 }
