@@ -59,7 +59,7 @@ func (s *Service) GetUserHabits(ctx context.Context, userID uuid.UUID) (*habitsd
 }
 
 func buildUserHabitResponse(habit habitsmodel.UserHabit) habitsdto.UserHabitResponse {
-	records := make([]habitsdto.HabitRecordResponse, 0, len(habit.HabitRecords))
+	// records := make([]habitsdto.HabitRecordResponse, 0, len(habit.HabitRecords))
 	completedToday := false
 
 	for _, record := range habit.HabitRecords {
@@ -67,14 +67,14 @@ func buildUserHabitResponse(habit habitsmodel.UserHabit) habitsdto.UserHabitResp
 			completedToday = true
 		}
 
-		records = append(records, habitsdto.HabitRecordResponse{
-			ID:              record.ID.String(),
-			Date:            record.Fecha,
-			Completed:       record.Completado,
-			RegisteredValue: record.ValorRegistrado,
-			XPEarned:        record.XPGanada,
-			CreatedAt:       record.CreatedAt,
-		})
+		// records = append(records, habitsdto.HabitRecordResponse{
+		// 	ID:              record.ID.String(),
+		// 	Date:            record.Fecha,
+		// 	Completed:       record.Completado,
+		// 	RegisteredValue: record.ValorRegistrado,
+		// 	XPEarned:        record.XPGanada,
+		// 	CreatedAt:       record.CreatedAt,
+		// })
 	}
 
 	return habitsdto.UserHabitResponse{
@@ -91,7 +91,7 @@ func buildUserHabitResponse(habit habitsmodel.UserHabit) habitsdto.UserHabitResp
 		StartDate:      habit.StartDate,
 		HabitImage:     habit.HabitCatalog.HabitImage,
 		CompletedToday: completedToday,
-		Records:        records,
+		// Records:        records,
 	}
 }
 

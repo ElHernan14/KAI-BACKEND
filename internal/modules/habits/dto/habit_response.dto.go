@@ -37,5 +37,5 @@ type UserHabitResponse struct {
 	HabitImage     *string   `json:"imagen_habito"`
 	CompletedToday bool      `json:"completado_hoy"`
 
-	Records []HabitRecordResponse `json:"registros"`
+	// Records []HabitRecordResponse `json:"registros"`
 }
