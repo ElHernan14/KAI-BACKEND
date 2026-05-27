@@ -14,5 +14,5 @@ func RegisterProtectedRoutes(api *gin.RouterGroup, container *AppContainer) {
 
 	home.RegisterRoutes(protected.Group("/home"), container.HomeController)
 	users.RegisterRoutes(protected.Group("/users"), container.UserController)
-	habits.RegisterRoutes(protected.Group("/habits"))
+	habits.RegisterRoutes(protected.Group("/habits"), container.HabitsController)
 }

@@ -2,8 +2,11 @@ package home
 
 import (
 	"context"
-	"database/sql"
 	"errors"
+
+	habitsmodel "kai-back/internal/modules/habits/models"
+	messagesmodel "kai-back/internal/modules/messages/models"
+	xpmodel "kai-back/internal/modules/xp/models"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -63,10 +66,10 @@ func (r *Repository) FindKaiSummary(ctx context.Context, userID uuid.UUID) (*Kai
 }
 
 func (r *Repository) FindTotalXP(ctx context.Context, userID uuid.UUID) (int, error) {
-	var total sql.NullInt64
+	var total int
 
 	err := r.db.WithContext(ctx).
-		Table("xp_usuario").
+		Model(&xpmodel.UserXP{}).
 		Select("COALESCE(SUM(valor), 0)").
 		Where("usuario_id = ?", userID).
 		Scan(&total).
@@ -75,14 +78,14 @@ func (r *Repository) FindTotalXP(ctx context.Context, userID uuid.UUID) (int, er
 		return 0, err
 	}
 
-	return int(total.Int64), nil
+	return total, nil
 }
 
 func (r *Repository) FindCurrentStreak(ctx context.Context, userID uuid.UUID) (int, error) {
-	var current sql.NullInt64
+	var current int
 
 	err := r.db.WithContext(ctx).
-		Table("rachas").
+		Model(&habitsmodel.Streak{}).
 		Select("COALESCE(MAX(dias_actuales), 0)").
 		Where("usuario_id = ? AND activa = true", userID).
 		Scan(&current).
@@ -91,7 +94,7 @@ func (r *Repository) FindCurrentStreak(ctx context.Context, userID uuid.UUID) (i
 		return 0, err
 	}
 
-	return int(current.Int64), nil
+	return current, nil
 }
 
 func (r *Repository) FindDailyHabits(ctx context.Context, userID uuid.UUID) ([]DailyHabitRow, error) {
@@ -123,22 +126,24 @@ func (r *Repository) FindDailyHabits(ctx context.Context, userID uuid.UUID) ([]D
 }
 
 func (r *Repository) FindFallbackMessage(ctx context.Context) (*string, error) {
-	var message string
+	var message messagesmodel.KaiMessage
 
 	err := r.db.WithContext(ctx).
-		Table("mensajes_kai").
+		Model(&messagesmodel.KaiMessage{}).
 		Select("mensaje").
 		Where("activo = true").
 		Order("created_at DESC").
-		Limit(1).
-		Scan(&message).
+		Take(&message).
 		Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	if message == "" {
+	if message.Message == "" {
 		return nil, nil
 	}
 
-	return &message, nil
+	return &message.Message, nil
 }

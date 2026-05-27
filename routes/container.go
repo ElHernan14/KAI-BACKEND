@@ -7,6 +7,7 @@ import (
 	"kai-back/internal/middleware"
 	authmodule "kai-back/internal/modules/auth"
 	authrepository "kai-back/internal/modules/auth/repository"
+	habitsmodule "kai-back/internal/modules/habits"
 	homemodule "kai-back/internal/modules/home"
 	homerepository "kai-back/internal/modules/home/repository"
 	kairepository "kai-back/internal/modules/kai/repository"
@@ -20,10 +21,11 @@ import (
 )
 
 type AppContainer struct {
-	AuthController *authmodule.Controller
-	HomeController *homemodule.Controller
-	UserController *usermodule.Controller
-	AuthMiddleware gin.HandlerFunc
+	AuthController   *authmodule.Controller
+	HabitsController *habitsmodule.Controller
+	HomeController   *homemodule.Controller
+	UserController   *usermodule.Controller
+	AuthMiddleware   gin.HandlerFunc
 }
 
 func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
@@ -32,6 +34,8 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 	userRepository := userrepository.NewRepository(db)
 	xpRepository := xprepository.New(db)
 	kaiRepository := kairepository.NewRepository(db)
+	habitsRepository := habitsmodule.NewRepository(db)
+	homeRepository := homerepository.NewRepository(db)
 
 	//services
 	initializerUserService := initializeruserservice.New(
@@ -48,18 +52,20 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 		time.Duration(cfg.JWTTTLHours)*time.Hour,
 	)
 	userService := usermodule.NewService(userRepository)
-	homeRepository := homerepository.NewRepository(db)
+	habitsService := habitsmodule.NewService(habitsRepository)
 	homeService := homemodule.NewService(homeRepository)
 
 	//controllers
 	authController := authmodule.NewController(authService)
+	habitsController := habitsmodule.NewController(habitsService)
 	homeController := homemodule.NewController(homeService)
 	userController := usermodule.NewController(userService)
 
 	return &AppContainer{
-		AuthController: authController,
-		HomeController: homeController,
-		UserController: userController,
-		AuthMiddleware: middleware.AuthMiddleware(cfg.JWTSecret),
+		AuthController:   authController,
+		HabitsController: habitsController,
+		HomeController:   homeController,
+		UserController:   userController,
+		AuthMiddleware:   middleware.AuthMiddleware(cfg.JWTSecret),
 	}
 }
