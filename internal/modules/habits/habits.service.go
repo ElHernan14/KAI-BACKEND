@@ -61,10 +61,14 @@ func (s *Service) GetUserHabits(ctx context.Context, userID uuid.UUID) (*habitsd
 func buildUserHabitResponse(habit habitsmodel.UserHabit) habitsdto.UserHabitResponse {
 	// records := make([]habitsdto.HabitRecordResponse, 0, len(habit.HabitRecords))
 	completedToday := false
+	totalXP := 0
 
 	for _, record := range habit.HabitRecords {
 		if isToday(record.Fecha) && record.Completado {
 			completedToday = true
+		}
+		if record.Completado {
+			totalXP += record.XPGanada
 		}
 
 		// records = append(records, habitsdto.HabitRecordResponse{
@@ -91,6 +95,8 @@ func buildUserHabitResponse(habit habitsmodel.UserHabit) habitsdto.UserHabitResp
 		StartDate:      habit.StartDate,
 		HabitImage:     habit.HabitCatalog.HabitImage,
 		CompletedToday: completedToday,
+		TotalXP:        totalXP,
+		CurrentStreak:  calculateCurrentStreak(habit.HabitRecords),
 		// Records:        records,
 	}
 }
@@ -101,4 +107,50 @@ func isToday(value time.Time) bool {
 	valueYear, valueMonth, valueDay := value.Date()
 
 	return year == valueYear && month == valueMonth && day == valueDay
+}
+
+func calculateCurrentStreak(records []habitsmodel.HabitRecord) int {
+	completedDates := make(map[string]bool)
+
+	for _, record := range records {
+		if !record.Completado {
+			continue
+		}
+
+		completedDates[dateKey(record.Fecha)] = true
+	}
+
+	if len(completedDates) == 0 {
+		return 0
+	}
+
+	today := dateOnly(time.Now())
+	yesterday := today.AddDate(0, 0, -1)
+
+	var currentDate time.Time
+	switch {
+	case completedDates[dateKey(today)]:
+		currentDate = today
+	case completedDates[dateKey(yesterday)]:
+		currentDate = yesterday
+	default:
+		return 0
+	}
+
+	streak := 0
+	for completedDates[dateKey(currentDate)] {
+		streak++
+		currentDate = currentDate.AddDate(0, 0, -1)
+	}
+
+	return streak
+}
+
+func dateOnly(value time.Time) time.Time {
+	year, month, day := value.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, value.Location())
+}
+
+func dateKey(value time.Time) string {
+	return dateOnly(value).Format("2006-01-02")
 }

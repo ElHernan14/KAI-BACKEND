@@ -36,6 +36,8 @@ type UserHabitResponse struct {
 	StartDate      time.Time `json:"fecha_inicio"`
 	HabitImage     *string   `json:"imagen_habito"`
 	CompletedToday bool      `json:"completado_hoy"`
+	TotalXP        int       `json:"xp_total"`
+	CurrentStreak  int       `json:"racha_actual"`
 
 	// Records []HabitRecordResponse `json:"registros"`
 }
