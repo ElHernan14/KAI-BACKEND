@@ -7,7 +7,9 @@ import (
 	"kai-back/internal/middleware"
 	authmodule "kai-back/internal/modules/auth"
 	authrepository "kai-back/internal/modules/auth/repository"
-	habitsmodule "kai-back/internal/modules/habits"
+	habitsController "kai-back/internal/modules/habits/controller"
+	habitsRepository "kai-back/internal/modules/habits/repository"
+	habitsService "kai-back/internal/modules/habits/service"
 	homemodule "kai-back/internal/modules/home"
 	homerepository "kai-back/internal/modules/home/repository"
 	kairepository "kai-back/internal/modules/kai/repository"
@@ -22,7 +24,7 @@ import (
 
 type AppContainer struct {
 	AuthController   *authmodule.Controller
-	HabitsController *habitsmodule.Controller
+	HabitsController *habitsController.Controller
 	HomeController   *homemodule.Controller
 	UserController   *usermodule.Controller
 	AuthMiddleware   gin.HandlerFunc
@@ -34,7 +36,7 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 	userRepository := userrepository.NewRepository(db)
 	xpRepository := xprepository.New(db)
 	kaiRepository := kairepository.NewRepository(db)
-	habitsRepository := habitsmodule.NewRepository(db)
+	habitsRepository := habitsRepository.NewRepository(db)
 	homeRepository := homerepository.NewRepository(db)
 
 	//services
@@ -52,12 +54,12 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 		time.Duration(cfg.JWTTTLHours)*time.Hour,
 	)
 	userService := usermodule.NewService(userRepository)
-	habitsService := habitsmodule.NewService(habitsRepository)
+	habitsService := habitsService.NewService(habitsRepository)
 	homeService := homemodule.NewService(homeRepository)
 
 	//controllers
 	authController := authmodule.NewController(authService)
-	habitsController := habitsmodule.NewController(habitsService)
+	habitsController := habitsController.NewController(habitsService)
 	homeController := homemodule.NewController(homeService)
 	userController := usermodule.NewController(userService)
 

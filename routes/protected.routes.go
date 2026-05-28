@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"kai-back/internal/modules/habits"
+	habitsRoute "kai-back/internal/modules/habits/routes"
 	"kai-back/internal/modules/home"
 	"kai-back/internal/modules/users"
 
@@ -14,5 +14,5 @@ func RegisterProtectedRoutes(api *gin.RouterGroup, container *AppContainer) {
 
 	home.RegisterRoutes(protected.Group("/home"), container.HomeController)
 	users.RegisterRoutes(protected.Group("/users"), container.UserController)
-	habits.RegisterRoutes(protected.Group("/habits"), container.HabitsController)
+	habitsRoute.RegisterRoutes(protected.Group("/habits"), container.HabitsController)
 }

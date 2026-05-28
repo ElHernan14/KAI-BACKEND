@@ -13,6 +13,7 @@ type UserHabit struct {
 	Custom         bool      `gorm:"column:personalizado;default:false"`
 	Active         bool      `gorm:"column:activo;default:true"`
 	StartDate      time.Time `gorm:"column:fecha_inicio;type:date"`
+	Personalized   bool      `gorm:"column:personalizado;default:false"`
 	CreatedAt      time.Time `gorm:"column:created_at;autoCreateTime"`
 
 	// Relaciones
