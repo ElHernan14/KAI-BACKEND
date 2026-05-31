@@ -102,7 +102,7 @@ func buildUserHabitResponse(habit habitsmodel.UserHabit) habitsdto.UserHabitResp
 		CareType:       habit.HabitCatalog.CareType,
 		Difficulty:     habit.HabitCatalog.Difficulty,
 		BaseXP:         habit.HabitCatalog.BaseXP,
-		Custom:         habit.Custom,
+		Custom:         habit.Personalized,
 		Active:         habit.Active,
 		StartDate:      habit.StartDate,
 		HabitImage:     habit.HabitCatalog.HabitImage,

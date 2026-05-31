@@ -13,15 +13,6 @@ type DailyProgress struct {
 	Pending   int `json:"pendientes"`
 }
 
-type HabitRecordResponse struct {
-	ID              string    `json:"id"`
-	Date            time.Time `json:"fecha"`
-	Completed       bool      `json:"completado"`
-	RegisteredValue *string   `json:"valor_registrado"`
-	XPEarned        int       `json:"xp_ganada"`
-	CreatedAt       time.Time `json:"created_at"`
-}
-
 type UserHabitResponse struct {
 	ID             string    `json:"habito_usuario_id"`
 	HabitCatalogID string    `json:"habito_catalogo_id"`

@@ -37,4 +37,15 @@ type HabitsRepository interface {
 		userHabit *habitsmodel.UserHabit,
 		initialRecord *habitsmodel.HabitRecord,
 	) error
+	FindHabitDetailByID(
+		ctx context.Context,
+		userID uuid.UUID,
+		habitUserID uuid.UUID,
+	) (*habitsmodel.UserHabit, error)
+
+	DeactivateHabit(
+		ctx context.Context,
+		userID uuid.UUID,
+		habitUserID uuid.UUID,
+	) error
 }
