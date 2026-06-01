@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	habitsDailyRecordsService "kai-back/internal/modules/habits/service"
 	homedto "kai-back/internal/modules/home/dto"
 	repository "kai-back/internal/modules/home/repository"
 	errorHandler "kai-back/internal/shared/errors"
@@ -16,14 +17,32 @@ type ServicePort interface {
 }
 
 type Service struct {
-	repository repository.HomeRepository
+	repository                repository.HomeRepository
+	habitsDailyRecordsService habitsDailyRecordsService.HabitsDailyRecordsServicePort
 }
 
-func NewService(repository repository.HomeRepository) *Service {
-	return &Service{repository: repository}
+func NewService(
+	repository repository.HomeRepository,
+	habitsDailyRecordsService habitsDailyRecordsService.HabitsDailyRecordsServicePort,
+) *Service {
+	return &Service{
+		repository:                repository,
+		habitsDailyRecordsService: habitsDailyRecordsService,
+	}
 }
 
 func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeResponse, error) {
+
+	// Aseguramos que existan los registros diarios para hoy antes de obtener la información del home
+	err := s.habitsDailyRecordsService.
+		EnsureTodayHabitRecords(
+			ctx,
+			userID,
+		)
+	if err != nil {
+		return nil, err
+	}
+
 	kai, err := s.repository.FindKaiSummary(ctx, userID)
 	if err != nil {
 		return nil, err

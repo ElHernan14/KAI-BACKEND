@@ -5,6 +5,7 @@ import (
 
 	habitsdto "kai-back/internal/modules/habits/dto"
 	servicePort "kai-back/internal/modules/habits/service"
+	completHabitService "kai-back/internal/services/habit_completion"
 	errorHandler "kai-back/internal/shared/errors"
 	"kai-back/internal/shared/helpers"
 	"kai-back/internal/shared/response"
@@ -14,11 +15,15 @@ import (
 )
 
 type Controller struct {
-	service servicePort.ServicePort
+	service             servicePort.ServicePort
+	completHabitService completHabitService.ServicePort
 }
 
-func NewController(service servicePort.ServicePort) *Controller {
-	return &Controller{service: service}
+func NewController(service servicePort.ServicePort, completHabitService completHabitService.ServicePort) *Controller {
+	return &Controller{
+		service:             service,
+		completHabitService: completHabitService,
+	}
 }
 
 func (ctrl *Controller) GetHabits(c *gin.Context) {
@@ -122,5 +127,63 @@ func (ctrl *Controller) SelectHabit(c *gin.Context) {
 	c.JSON(
 		http.StatusCreated,
 		response.Success(resp),
+	)
+}
+
+func (ctrl *Controller) GetHabitDetail(c *gin.Context) {
+
+	userID, err := helpers.ValidateUserUUID(c)
+	if err != nil {
+		return
+	}
+
+	habitUserID, err := helpers.ValidateUserHabitID(c)
+	if err != nil {
+		return
+	}
+
+	res, err := ctrl.service.GetHabitDetail(
+		c.Request.Context(),
+		userID,
+		habitUserID,
+	)
+
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		response.Success(res),
+	)
+}
+
+func (ctrl *Controller) DeactivateHabit(c *gin.Context) {
+
+	userID, err := helpers.ValidateUserUUID(c)
+	if err != nil {
+		return
+	}
+
+	habitUserID, err := helpers.ValidateUserHabitID(c)
+	if err != nil {
+		return
+	}
+
+	data, err := ctrl.service.DeactivateHabit(
+		c.Request.Context(),
+		userID,
+		habitUserID,
+	)
+
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		response.Success(data.Mensaje),
 	)
 }

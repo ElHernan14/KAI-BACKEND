@@ -9,6 +9,7 @@ import (
 	habitsdto "kai-back/internal/modules/habits/dto"
 	habitsmodel "kai-back/internal/modules/habits/models"
 	repositoryPort "kai-back/internal/modules/habits/repository"
+	helperPrivate "kai-back/internal/modules/habits/service/private"
 	errorHandler "kai-back/internal/shared/errors"
 
 	"github.com/google/uuid"
@@ -27,17 +28,40 @@ type ServicePort interface {
 		userID uuid.UUID,
 		req habitsdto.SelectHabitRequest,
 	) (*habitsdto.SelectHabitResponse, error)
+	GetHabitDetail(
+		ctx context.Context,
+		userID uuid.UUID,
+		habitUserID uuid.UUID,
+	) (*habitsdto.HabitDetailResponse, error)
+	DeactivateHabit(
+		ctx context.Context,
+		userID uuid.UUID,
+		habitID uuid.UUID,
+	) (*habitsdto.DeactivateHabitResponse, error)
 }
 
 type Service struct {
-	repository repositoryPort.HabitsRepository
+	repository                repositoryPort.HabitsRepository
+	habitsDailyRecordsService HabitsDailyRecordsServicePort
 }
 
-func NewService(repository repositoryPort.HabitsRepository) *Service {
-	return &Service{repository: repository}
+func NewService(repository repositoryPort.HabitsRepository, habitsDailyRecordsService HabitsDailyRecordsServicePort) *Service {
+	return &Service{
+		repository:                repository,
+		habitsDailyRecordsService: habitsDailyRecordsService,
+	}
 }
 
 func (s *Service) GetUserHabits(ctx context.Context, userID uuid.UUID) (*habitsdto.HabitsViewResponse, error) {
+	// Aseguramos que existan registros de hábitos para hoy antes de obtener los hábitos del usuario
+	err := s.habitsDailyRecordsService.EnsureTodayHabitRecords(
+		ctx,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	userHabits, err := s.repository.FindUserHabits(ctx, userID)
 	if err != nil {
 		log.Printf("Error fetching user habits: %v", err)
@@ -52,7 +76,7 @@ func (s *Service) GetUserHabits(ctx context.Context, userID uuid.UUID) (*habitsd
 
 	habitsResponse := make([]habitsdto.UserHabitResponse, 0, len(userHabits))
 	for _, habit := range userHabits {
-		habitsResponse = append(habitsResponse, buildUserHabitResponse(habit))
+		habitsResponse = append(habitsResponse, helperPrivate.BuildUserHabitResponse(habit))
 	}
 
 	total := len(habitsResponse)
@@ -68,103 +92,6 @@ func (s *Service) GetUserHabits(ctx context.Context, userID uuid.UUID) (*habitsd
 		},
 		Habits: habitsResponse,
 	}, nil
-}
-
-func buildUserHabitResponse(habit habitsmodel.UserHabit) habitsdto.UserHabitResponse {
-	// records := make([]habitsdto.HabitRecordResponse, 0, len(habit.HabitRecords))
-	completedToday := false
-	totalXP := 0
-
-	for _, record := range habit.HabitRecords {
-		if isToday(record.Fecha) && record.Completado {
-			completedToday = true
-		}
-		if record.Completado {
-			totalXP += record.XPGanada
-		}
-
-		// records = append(records, habitsdto.HabitRecordResponse{
-		// 	ID:              record.ID.String(),
-		// 	Date:            record.Fecha,
-		// 	Completed:       record.Completado,
-		// 	RegisteredValue: record.ValorRegistrado,
-		// 	XPEarned:        record.XPGanada,
-		// 	CreatedAt:       record.CreatedAt,
-		// })
-	}
-
-	return habitsdto.UserHabitResponse{
-		ID:             habit.ID.String(),
-		HabitCatalogID: habit.HabitCatalogID.String(),
-		Name:           habit.HabitCatalog.Name,
-		Description:    habit.HabitCatalog.Description,
-		Category:       habit.HabitCatalog.Category,
-		CareType:       habit.HabitCatalog.CareType,
-		Difficulty:     habit.HabitCatalog.Difficulty,
-		BaseXP:         habit.HabitCatalog.BaseXP,
-		Custom:         habit.Personalized,
-		Active:         habit.Active,
-		StartDate:      habit.StartDate,
-		HabitImage:     habit.HabitCatalog.HabitImage,
-		CompletedToday: completedToday,
-		TotalXP:        totalXP,
-		CurrentStreak:  calculateCurrentStreak(habit.HabitRecords),
-		// Records:        records,
-	}
-}
-
-func isToday(value time.Time) bool {
-	now := time.Now()
-	year, month, day := now.Date()
-	valueYear, valueMonth, valueDay := value.Date()
-
-	return year == valueYear && month == valueMonth && day == valueDay
-}
-
-func calculateCurrentStreak(records []habitsmodel.HabitRecord) int {
-	completedDates := make(map[string]bool)
-
-	for _, record := range records {
-		if !record.Completado {
-			continue
-		}
-
-		completedDates[dateKey(record.Fecha)] = true
-	}
-
-	if len(completedDates) == 0 {
-		return 0
-	}
-
-	today := dateOnly(time.Now())
-	yesterday := today.AddDate(0, 0, -1)
-
-	var currentDate time.Time
-	switch {
-	case completedDates[dateKey(today)]:
-		currentDate = today
-	case completedDates[dateKey(yesterday)]:
-		currentDate = yesterday
-	default:
-		return 0
-	}
-
-	streak := 0
-	for completedDates[dateKey(currentDate)] {
-		streak++
-		currentDate = currentDate.AddDate(0, 0, -1)
-	}
-
-	return streak
-}
-
-func dateOnly(value time.Time) time.Time {
-	year, month, day := value.Date()
-	return time.Date(year, month, day, 0, 0, 0, 0, value.Location())
-}
-
-func dateKey(value time.Time) string {
-	return dateOnly(value).Format("2006-01-02")
 }
 
 func (s *Service) GetCategories(
@@ -227,20 +154,45 @@ func (s *Service) SelectHabit(
 		)
 	}
 
-	exists, err := s.repository.UserHasActiveHabit(
+	//Comprobamos si el usuario ya tiene este hábito activo o inactivo para evitar duplicados y reactivar si es necesario
+	existingHabit, err := s.repository.FindUserHabitByCatalogID(
 		ctx,
 		userID,
 		req.HabitCatalogID,
 	)
+
 	if err != nil {
-		return nil, err
+		return nil, errorHandler.NewAppError(
+			http.StatusInternalServerError,
+			"error al verificar hábito existente",
+		)
 	}
 
-	if exists {
-		return nil, errorHandler.NewAppError(
-			http.StatusConflict,
-			"el usuario ya posee este habito",
-		)
+	if existingHabit != nil {
+		// Si el hábito existe y está activo, retornamos un error de conflicto
+		if existingHabit.Active {
+
+			return nil, errorHandler.NewAppError(
+				http.StatusConflict,
+				"el usuario ya posee este habito",
+			)
+		}
+
+		// Si el hábito existe pero está inactivo, lo reactivamos
+		if err := s.repository.
+			ReactivateHabitWithTodayRecord(
+				ctx,
+				existingHabit,
+			); err != nil {
+
+			return nil, err
+		}
+
+		return &habitsdto.SelectHabitResponse{
+			ID:             existingHabit.ID,
+			HabitCatalogID: existingHabit.HabitCatalogID,
+			Active:         true,
+		}, nil
 	}
 
 	userHabit := &habitsmodel.UserHabit{
@@ -269,5 +221,131 @@ func (s *Service) SelectHabit(
 		ID:             userHabit.ID,
 		HabitCatalogID: userHabit.HabitCatalogID,
 		Active:         userHabit.Active,
+	}, nil
+}
+
+func (s *Service) GetHabitDetail(
+	ctx context.Context,
+	userID uuid.UUID,
+	userHabitID uuid.UUID,
+) (*habitsdto.HabitDetailResponse, error) {
+	// Aseguramos que existan registros de hábitos para hoy antes de obtener los hábitos del usuario
+	err := s.habitsDailyRecordsService.EnsureTodayHabitRecords(
+		ctx,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	habit, err := s.repository.FindHabitDetailByID(
+		ctx,
+		userID,
+		userHabitID,
+	)
+	if err != nil {
+		return nil, errorHandler.NewAppError(
+			http.StatusNotFound,
+			"habito del usuario no encontrado",
+		)
+	}
+
+	totalXP := helperPrivate.CalculateTotalXP(habit.HabitRecords)
+
+	currentStreak := helperPrivate.CalculateCurrentStreak(habit.HabitRecords)
+
+	records := make([]habitsdto.HabitRecordResponse, 0)
+
+	for _, record := range habit.HabitRecords {
+
+		records = append(records, habitsdto.HabitRecordResponse{
+			ID:              record.ID.String(),
+			UserHabitID:     record.UserHabitID,
+			Date:            record.Fecha,
+			Completed:       record.Completado,
+			RegisteredValue: record.ValorRegistrado,
+			XPEarned:        record.XPGanada,
+			CreatedAt:       record.CreatedAt,
+		})
+	}
+
+	response := &habitsdto.HabitDetailResponse{
+		Habito: habitsdto.UserHabitResponse{
+			ID:             habit.ID.String(),
+			HabitCatalogID: habit.HabitCatalogID.String(),
+
+			Name:        habit.HabitCatalog.Name,
+			Description: habit.HabitCatalog.Description,
+			Category:    habit.HabitCatalog.Category,
+			CareType:    habit.HabitCatalog.CareType,
+			Difficulty:  habit.HabitCatalog.Difficulty,
+			BaseXP:      habit.HabitCatalog.BaseXP,
+			HabitImage:  habit.HabitCatalog.HabitImage,
+
+			Custom:    habit.Personalized,
+			Active:    habit.Active,
+			StartDate: habit.StartDate,
+
+			CompletedToday: false, // lo calculamos abajo
+
+			TotalXP:       totalXP,
+			CurrentStreak: currentStreak,
+		},
+
+		Registros: records,
+	}
+
+	today := time.Now().Format("2006-01-02")
+
+	for _, record := range habit.HabitRecords {
+
+		if record.Completado &&
+			record.Fecha.Format("2006-01-02") == today {
+
+			response.Habito.CompletedToday = true
+			break
+		}
+	}
+
+	return response, nil
+}
+
+func (s *Service) DeactivateHabit(
+	ctx context.Context,
+	userID uuid.UUID,
+	habitID uuid.UUID,
+) (*habitsdto.DeactivateHabitResponse, error) {
+
+	userHabit, err := s.repository.FindUserHabitByID(
+		ctx,
+		userID,
+		habitID,
+	)
+
+	if err != nil {
+		return nil, errorHandler.NewAppError(
+			http.StatusNotFound,
+			"habito no encontrado",
+		)
+	}
+
+	if !userHabit.Active {
+		return nil, errorHandler.NewAppError(
+			http.StatusConflict,
+			"el habito ya se encuentra desactivado",
+		)
+	}
+
+	if err := s.repository.DeactivateHabit(
+		ctx,
+		habitID,
+	); err != nil {
+		return nil, err
+	}
+
+	return &habitsdto.DeactivateHabitResponse{
+		HabitoUsuarioID: habitID.String(),
+		Activo:          false,
+		Mensaje:         "habito desactivado correctamente",
 	}, nil
 }

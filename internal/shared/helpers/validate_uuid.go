@@ -47,3 +47,27 @@ func ValidateCategoryID(c *gin.Context) (uuid.UUID, error) {
 
 	return categoryID, nil
 }
+
+func ValidateUserHabitID(c *gin.Context) (uuid.UUID, error) {
+	habitUserIDParam := c.Param("habitUserId")
+	if habitUserIDParam == "" {
+		return uuid.Nil, c.Error(
+			errorHandler.NewAppError(
+				http.StatusBadRequest,
+				"habit_user_id es requerido",
+			),
+		)
+	}
+
+	habitUserID, err := uuid.Parse(habitUserIDParam)
+	if err != nil {
+		return uuid.Nil, c.Error(
+			errorHandler.NewAppError(
+				http.StatusBadRequest,
+				"habit_user_id invalido",
+			),
+		)
+	}
+
+	return habitUserID, nil
+}

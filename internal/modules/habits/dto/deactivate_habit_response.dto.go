@@ -1,9 +1,7 @@
 package habitsdto
 
-import "github.com/google/uuid"
-
 type DeactivateHabitResponse struct {
-	HabitID uuid.UUID `json:"habit_id"`
-	Active  bool      `json:"active"`
-	Message string    `json:"message"`
+	HabitoUsuarioID string `json:"habito_usuario_id"`
+	Activo          bool   `json:"activo"`
+	Mensaje         string `json:"mensaje"`
 }

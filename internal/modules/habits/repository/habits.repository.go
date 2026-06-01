@@ -3,6 +3,7 @@ package habitsRepository
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	habitsdto "kai-back/internal/modules/habits/dto"
 	habitsmodel "kai-back/internal/modules/habits/models"
@@ -160,6 +161,87 @@ func (r *Repository) UserHasActiveHabit(
 	return count > 0, nil
 }
 
+func (r *Repository) FindUserHabitByCatalogID(
+	ctx context.Context,
+	userID uuid.UUID,
+	habitCatalogID uuid.UUID,
+) (*habitsmodel.UserHabit, error) {
+
+	var habit habitsmodel.UserHabit
+
+	err := r.db.
+		WithContext(ctx).
+		Where("usuario_id = ?", userID).
+		Where("habito_catalogo_id = ?", habitCatalogID).
+		First(&habit).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &habit, nil
+}
+
+func (r *Repository) ReactivateHabit(
+	ctx context.Context,
+	habitID uuid.UUID,
+) error {
+
+	return r.db.
+		WithContext(ctx).
+		Model(&habitsmodel.UserHabit{}).
+		Where("id = ?", habitID).
+		Update("activo", true).
+		Error
+}
+
+func (r *Repository) ReactivateHabitWithTodayRecord(
+	ctx context.Context,
+	userHabit *habitsmodel.UserHabit,
+) error {
+
+	return r.db.WithContext(ctx).
+		Transaction(func(tx *gorm.DB) error {
+
+			if err := tx.
+				Model(&habitsmodel.UserHabit{}).
+				Where("id = ?", userHabit.ID).
+				Update("activo", true).
+				Error; err != nil {
+				return err
+			}
+
+			var count int64
+
+			if err := tx.
+				Model(&habitsmodel.HabitRecord{}).
+				Where("habito_usuario_id = ?", userHabit.ID).
+				Where("fecha = CURRENT_DATE").
+				Count(&count).
+				Error; err != nil {
+				return err
+			}
+
+			if count == 0 {
+
+				record := habitsmodel.HabitRecord{
+					UsuarioID:   userHabit.UserID,
+					UserHabitID: userHabit.ID,
+					Fecha:       time.Now(),
+					Completado:  false,
+					XPGanada:    0,
+				}
+
+				if err := tx.Create(&record).Error; err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+}
+
 func (r *Repository) SelectHabit(
 	ctx context.Context,
 	userHabit *habitsmodel.UserHabit,
@@ -180,4 +262,235 @@ func (r *Repository) SelectHabit(
 
 		return nil
 	})
+}
+
+func (r *Repository) FindHabitDetailByID(
+	ctx context.Context,
+	userID uuid.UUID,
+	habitUserID uuid.UUID,
+) (*habitsmodel.UserHabit, error) {
+
+	var habit habitsmodel.UserHabit
+
+	err := r.db.
+		WithContext(ctx).
+		Model(&habitsmodel.UserHabit{}).
+		Preload("HabitCatalog").
+		Preload("HabitRecords", func(db *gorm.DB) *gorm.DB {
+			return db.Order("fecha DESC")
+		}).
+		Where(
+			"id = ? AND usuario_id = ? AND activo = true",
+			habitUserID,
+			userID,
+		).
+		First(&habit).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &habit, nil
+}
+
+func (r *Repository) FindUserHabitByID(
+	ctx context.Context,
+	userID uuid.UUID,
+	habitID uuid.UUID,
+) (*habitsmodel.UserHabit, error) {
+
+	var habit habitsmodel.UserHabit
+
+	err := r.db.
+		WithContext(ctx).
+		Preload("HabitCatalog").
+		Where("id = ?", habitID).
+		Where("usuario_id = ?", userID).
+		First(&habit).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &habit, nil
+}
+
+func (r *Repository) DeactivateHabit(
+	ctx context.Context,
+	habitID uuid.UUID,
+) error {
+
+	return r.db.
+		WithContext(ctx).
+		Model(&habitsmodel.UserHabit{}).
+		Where("id = ?", habitID).
+		Update("activo", false).
+		Error
+}
+
+func (r *Repository) FindActiveUserHabits(
+	ctx context.Context,
+	userID uuid.UUID,
+) ([]habitsmodel.UserHabit, error) {
+
+	var habits []habitsmodel.UserHabit
+
+	err := r.db.
+		WithContext(ctx).
+		Where("usuario_id = ?", userID).
+		Where("activo = true").
+		Find(&habits).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return habits, nil
+}
+
+func (r *Repository) FindTodayRecords(
+	ctx context.Context,
+	userID uuid.UUID,
+	date time.Time,
+) ([]habitsmodel.HabitRecord, error) {
+
+	var records []habitsmodel.HabitRecord
+
+	err := r.db.
+		WithContext(ctx).
+		Where("usuario_id = ?", userID).
+		Where("fecha = CURRENT_DATE").
+		Find(&records).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (r *Repository) FindTodayRecord(
+	ctx context.Context,
+	userHabitID uuid.UUID,
+	date time.Time,
+) (*habitsmodel.HabitRecord, error) {
+
+	var record habitsmodel.HabitRecord
+
+	err := r.db.
+		WithContext(ctx).
+		Where("habito_usuario_id = ?", userHabitID).
+		Where("fecha = CURRENT_DATE").
+		Find(&record).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
+}
+
+func (r *Repository) CreateHabitRecords(
+	ctx context.Context,
+	tx *gorm.DB,
+	records []habitsmodel.HabitRecord,
+) error {
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	if len(records) == 0 {
+		return nil
+	}
+
+	return db.
+		WithContext(ctx).
+		Create(&records).
+		Error
+}
+
+func (r *Repository) UpdateHabitRecord(
+	ctx context.Context,
+	tx *gorm.DB,
+	record *habitsmodel.HabitRecord,
+) error {
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Model(&habitsmodel.HabitRecord{}).
+		Where("id = ?", record.ID).
+		Updates(map[string]interface{}{
+			"completado":       record.Completado,
+			"valor_registrado": record.ValorRegistrado,
+			"xp_ganada":        record.XPGanada,
+		}).
+		Error
+}
+
+func (r *Repository) FindStreakByHabit(
+	ctx context.Context,
+	userHabitID uuid.UUID,
+) (*habitsmodel.Streak, error) {
+
+	var streak habitsmodel.Streak
+
+	err := r.db.
+		WithContext(ctx).
+		Where("habito_usuario_id = ?", userHabitID).
+		First(&streak).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &streak, nil
+}
+
+func (r *Repository) CreateStreak(
+	ctx context.Context,
+	tx *gorm.DB,
+	streak *habitsmodel.Streak,
+) error {
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Create(streak).
+		Error
+}
+
+func (r *Repository) UpdateStreak(
+	ctx context.Context,
+	tx *gorm.DB,
+	streak *habitsmodel.Streak,
+) error {
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Save(streak).
+		Error
 }

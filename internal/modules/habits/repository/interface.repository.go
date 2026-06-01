@@ -4,8 +4,10 @@ import (
 	"context"
 	habitsdto "kai-back/internal/modules/habits/dto"
 	habitsmodel "kai-back/internal/modules/habits/models"
+	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type HabitsRepository interface {
@@ -32,20 +34,93 @@ type HabitsRepository interface {
 		catalogID uuid.UUID,
 	) (bool, error)
 
+	FindUserHabitByCatalogID(
+		ctx context.Context,
+		userID uuid.UUID,
+		habitCatalogID uuid.UUID,
+	) (*habitsmodel.UserHabit, error)
+
+	ReactivateHabit(
+		ctx context.Context,
+		habitID uuid.UUID,
+	) error
+
+	ReactivateHabitWithTodayRecord(
+		ctx context.Context,
+		userHabit *habitsmodel.UserHabit,
+	) error
+
 	SelectHabit(
 		ctx context.Context,
 		userHabit *habitsmodel.UserHabit,
 		initialRecord *habitsmodel.HabitRecord,
 	) error
+
 	FindHabitDetailByID(
 		ctx context.Context,
 		userID uuid.UUID,
 		habitUserID uuid.UUID,
 	) (*habitsmodel.UserHabit, error)
 
-	DeactivateHabit(
+	FindUserHabitByID(
 		ctx context.Context,
 		userID uuid.UUID,
-		habitUserID uuid.UUID,
+		habitID uuid.UUID,
+	) (*habitsmodel.UserHabit, error)
+
+	DeactivateHabit(
+		ctx context.Context,
+		habitID uuid.UUID,
 	) error
+
+	FindTodayRecord(
+		ctx context.Context,
+		userHabitID uuid.UUID,
+		date time.Time,
+	) (*habitsmodel.HabitRecord, error)
+
+	UpdateHabitRecord(
+		ctx context.Context,
+		tx *gorm.DB,
+		record *habitsmodel.HabitRecord,
+	) error
+
+	// FindStreakByUserHabitID(
+	// 	ctx context.Context,
+	// 	userHabitID uuid.UUID,
+	// ) (*habitsmodel.Streak, error)
+
+	CreateStreak(
+		ctx context.Context,
+		tx *gorm.DB,
+		streak *habitsmodel.Streak,
+	) error
+
+	UpdateStreak(
+		ctx context.Context,
+		tx *gorm.DB,
+		streak *habitsmodel.Streak,
+	) error
+
+	FindActiveUserHabits(
+		ctx context.Context,
+		userID uuid.UUID,
+	) ([]habitsmodel.UserHabit, error)
+
+	FindTodayRecords(
+		ctx context.Context,
+		userID uuid.UUID,
+		date time.Time,
+	) ([]habitsmodel.HabitRecord, error)
+
+	CreateHabitRecords(
+		ctx context.Context,
+		tx *gorm.DB,
+		records []habitsmodel.HabitRecord,
+	) error
+
+	FindStreakByHabit(
+		ctx context.Context,
+		userHabitID uuid.UUID,
+	) (*habitsmodel.Streak, error)
 }

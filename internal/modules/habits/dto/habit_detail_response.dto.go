@@ -7,14 +7,8 @@ import (
 )
 
 type HabitDetailResponse struct {
-	Habito       UserHabitResponse     `json:"habito"`
-	Estadisticas HabitStatsResponse    `json:"estadisticas"`
-	Registros    []HabitRecordResponse `json:"registros"`
-}
-
-type HabitStatsResponse struct {
-	TotalCompletados int `json:"total_completados"`
-	XPTotal          int `json:"xp_total"`
+	Habito    UserHabitResponse     `json:"habito_usuario"`
+	Registros []HabitRecordResponse `json:"registros_habito"`
 }
 
 type HabitRecordResponse struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	kaimodel "kai-back/internal/modules/kai/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -56,4 +57,126 @@ func (r *Repository) CreateKaiState(
 	kaiState *kaimodel.KaiState,
 ) error {
 	return tx.WithContext(ctx).Create(kaiState).Error
+}
+
+func (r *Repository) FindKaiAttribute(
+	ctx context.Context,
+	userID uuid.UUID,
+	attributeID uuid.UUID,
+) (*kaimodel.KaiAttribute, error) {
+
+	var attr kaimodel.KaiAttribute
+
+	err := r.db.
+		WithContext(ctx).
+		Where("usuario_id = ?", userID).
+		Where("atributo_kai_id = ?", attributeID).
+		First(&attr).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &attr, nil
+}
+
+func (r *Repository) UpdateKaiAttribute(
+	ctx context.Context,
+	tx *gorm.DB,
+	attribute *kaimodel.KaiAttribute,
+) error {
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Save(attribute).
+		Error
+}
+
+func (r *Repository) FindUserKaiAttributes(
+	ctx context.Context,
+	userID uuid.UUID,
+) ([]kaimodel.KaiAttribute, error) {
+
+	var attributes []kaimodel.KaiAttribute
+
+	err := r.db.
+		WithContext(ctx).
+		Where(
+			"usuario_id = ?",
+			userID,
+		).
+		Find(&attributes).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return attributes, nil
+}
+
+func (r *Repository) FindKaiStateByUserID(
+	ctx context.Context,
+	userID uuid.UUID,
+) (*kaimodel.KaiState, error) {
+
+	var state kaimodel.KaiState
+
+	err := r.db.
+		WithContext(ctx).
+		Where(
+			"usuario_id = ?",
+			userID,
+		).
+		First(&state).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &state, nil
+}
+
+func (r *Repository) UpdateKaiState(
+	ctx context.Context,
+	tx *gorm.DB,
+	state *kaimodel.KaiState,
+) error {
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Save(state).
+		Error
+}
+
+func (r *Repository) UpdateLastMessage(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	message string,
+) error {
+
+	return tx.
+		WithContext(ctx).
+		Model(&kaimodel.KaiState{}).
+		Where("usuario_id = ?", userID).
+		Update(
+			"ultimo_mensaje",
+			message,
+		).
+		Error
 }
