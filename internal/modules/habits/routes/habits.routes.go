@@ -13,4 +13,5 @@ func RegisterRoutes(router *gin.RouterGroup, controller *controller.Controller) 
 	router.POST("/select", controller.SelectHabit)
 	router.GET("/:habitUserId", controller.GetHabitDetail)
 	router.DELETE("/:habitUserId/deactivate", controller.DeactivateHabit)
+	router.POST("/:habitUserId/complete", controller.CompleteHabit)
 }

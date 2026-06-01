@@ -187,3 +187,43 @@ func (ctrl *Controller) DeactivateHabit(c *gin.Context) {
 		response.Success(data.Mensaje),
 	)
 }
+
+func (ctrl *Controller) CompleteHabit(c *gin.Context) {
+	userID, err := helpers.ValidateUserUUID(c)
+	if err != nil {
+		return
+	}
+
+	habitUserID, err := helpers.ValidateUserHabitID(c)
+	if err != nil {
+		return
+	}
+
+	var req habitsdto.CompleteHabitRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusBadRequest,
+				"request json invalido",
+			),
+		)
+		return
+	}
+
+	err = ctrl.completHabitService.CompleteHabit(
+		c.Request.Context(),
+		userID,
+		habitUserID,
+		req.ValorRegistrado,
+	)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		response.Success("habito completado correctamente"),
+	)
+}
