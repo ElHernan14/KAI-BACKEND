@@ -12,11 +12,10 @@ import (
 
 type HabitsRepository interface {
 	FindUserHabits(ctx context.Context, userID uuid.UUID) ([]habitsmodel.UserHabit, error)
-	CountDailyCompleted(ctx context.Context, userID uuid.UUID) (int, error)
+	CountDailyCompleted(ctx context.Context, tx *gorm.DB, userID uuid.UUID) (int, error)
 	FindCategories(
 		ctx context.Context,
 	) ([]habitsdto.HabitCategoryResponse, error)
-
 	FindCatalogByCategoryExcludingUser(
 		ctx context.Context,
 		userID uuid.UUID,
@@ -64,6 +63,7 @@ type HabitsRepository interface {
 
 	FindUserHabitByID(
 		ctx context.Context,
+		tx *gorm.DB,
 		userID uuid.UUID,
 		habitID uuid.UUID,
 	) (*habitsmodel.UserHabit, error)
@@ -75,6 +75,7 @@ type HabitsRepository interface {
 
 	FindTodayRecord(
 		ctx context.Context,
+		tx *gorm.DB,
 		userHabitID uuid.UUID,
 		date time.Time,
 	) (*habitsmodel.HabitRecord, error)
@@ -121,6 +122,7 @@ type HabitsRepository interface {
 
 	FindStreakByHabit(
 		ctx context.Context,
+		tx *gorm.DB,
 		userHabitID uuid.UUID,
 	) (*habitsmodel.Streak, error)
 }

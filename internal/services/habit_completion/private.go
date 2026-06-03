@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	habitsmodel "kai-back/internal/modules/habits/models"
+	kaimodel "kai-back/internal/modules/kai/models"
 	messagesmodel "kai-back/internal/modules/messages/models"
 	errorHandler "kai-back/internal/shared/errors"
 	"math"
@@ -16,6 +17,7 @@ import (
 
 func (s *Service) validateHabit(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 	userHabitID uuid.UUID,
 ) (*habitsmodel.UserHabit,
@@ -24,6 +26,7 @@ func (s *Service) validateHabit(
 
 	habit, err := s.habitRepo.FindUserHabitByID(
 		ctx,
+		tx,
 		userID,
 		userHabitID,
 	)
@@ -43,6 +46,7 @@ func (s *Service) validateHabit(
 
 	record, err := s.habitRepo.FindTodayRecord(
 		ctx,
+		tx,
 		userHabitID,
 		time.Now(),
 	)
@@ -106,6 +110,7 @@ func (s *Service) updateStreak(
 
 	streak, err := s.habitRepo.FindStreakByHabit(
 		ctx,
+		tx,
 		habit.ID,
 	)
 
@@ -237,6 +242,7 @@ func (s *Service) grantXP(
 	userXP, err := s.xpRepo.
 		FindUserXPByCategory(
 			ctx,
+			tx,
 			userID,
 			habit.HabitCatalog.XPCategoryID,
 		)
@@ -277,6 +283,7 @@ func (s *Service) grantKaiAttributes(
 	mappings, err := s.xpRepo.
 		FindXPAttributesByCategory(
 			ctx,
+			tx,
 			habit.HabitCatalog.XPCategoryID,
 		)
 	if err != nil {
@@ -291,6 +298,7 @@ func (s *Service) grantKaiAttributes(
 		attr, err := s.kaiRepo.
 			FindKaiAttribute(
 				ctx,
+				tx,
 				userID,
 				mapping.AttributeTypeID,
 			)
@@ -331,11 +339,12 @@ func (s *Service) recalculateDominantAttribute(
 	ctx context.Context,
 	tx *gorm.DB,
 	userID uuid.UUID,
-) (*uuid.UUID, error) {
+) (*kaimodel.KaiAttribute, error) {
 
 	attributes, err := s.kaiRepo.
 		FindUserKaiAttributes(
 			ctx,
+			tx,
 			userID,
 		)
 	if err != nil {
@@ -364,6 +373,7 @@ func (s *Service) recalculateDominantAttribute(
 	kaiState, err := s.kaiRepo.
 		FindKaiStateByUserID(
 			ctx,
+			tx,
 			userID,
 		)
 	if err != nil {
@@ -389,19 +399,22 @@ func (s *Service) recalculateDominantAttribute(
 		)
 	}
 
-	return kaiState.DominantAttributeID, nil
+	return &dominant, nil
 }
 
 func (s *Service) updateKaiState(
 	ctx context.Context,
 	tx *gorm.DB,
 	userID uuid.UUID,
-	dominantAttributeID *uuid.UUID,
+	habit *habitsmodel.UserHabit,
+	streak *habitsmodel.Streak,
+	dominantAttribute *kaimodel.KaiAttribute,
 ) error {
 
 	kaiState, err := s.kaiRepo.
 		FindKaiStateByUserID(
 			ctx,
+			tx,
 			userID,
 		)
 	if err != nil {
@@ -412,6 +425,49 @@ func (s *Service) updateKaiState(
 	}
 
 	now := time.Now()
+	totalXP, err := s.xpRepo.
+		FindTotalUserXP(
+			ctx,
+			tx,
+			userID,
+		)
+	if err != nil {
+		return errorHandler.NewAppError(
+			http.StatusInternalServerError,
+			"error al calcular el XP total del usuario",
+		)
+	}
+
+	completedToday, err := s.habitRepo.
+		CountDailyCompleted(
+			ctx,
+			tx,
+			userID,
+		)
+	if err != nil {
+		return errorHandler.NewAppError(
+			http.StatusInternalServerError,
+			"error al calcular los habitos completados del dia",
+		)
+	}
+
+	currentStreak := 0
+	if streak != nil {
+		currentStreak = streak.CurrentDays
+	}
+
+	nextStage := calculateStage(totalXP)
+	stageChanged := kaiState.CurrentStage != nextStage
+
+	attributeName := ""
+	if dominantAttribute != nil {
+		kaiState.DominantAttributeID =
+			&dominantAttribute.AttributeTypeID
+
+		if dominantAttribute.AttributeType != nil {
+			attributeName = dominantAttribute.AttributeType.Name
+		}
+	}
 
 	kaiState.LastInteraction = &now
 
@@ -419,21 +475,38 @@ func (s *Service) updateKaiState(
 
 	kaiState.RecoveryMode = false
 
-	kaiState.DominantAttributeID =
-		dominantAttributeID
+	kaiState.CurrentStage = nextStage
 
-	kaiState.Energy += 10
+	kaiState.CurrentState = calculateState(
+		completedToday,
+		currentStreak,
+	)
 
-	if kaiState.Energy > 100 {
-		kaiState.Energy = 100
+	currentMode := calculateMode(
+		attributeName,
+		currentStreak,
+		stageChanged,
+	)
+	kaiState.CurrentMode = &currentMode
+
+	kaiState.Energy = clampInt(
+		kaiState.Energy+calculateEnergyGain(
+			habit.HabitCatalog.Difficulty,
+			currentStreak,
+		),
+		kaiEnergyMin,
+		kaiEnergyMax,
+	)
+
+	kaiState.BondLevel = clampInt(
+		kaiState.BondLevel+calculateBondGain(currentStreak),
+		kaiBondMin,
+		kaiBondMax,
+	)
+
+	if stageChanged {
+		kaiState.LastEvolution = &now
 	}
-
-	kaiState.BondLevel += 1
-
-	// TODO:
-	// Recalcular estado_actual
-	// Recalcular etapa_actual
-	// Verificar evolución
 
 	return s.kaiRepo.
 		UpdateKaiState(
@@ -456,23 +529,84 @@ func (s *Service) generateMotivationalMessage(
 	ctx context.Context,
 	tx *gorm.DB,
 	userID uuid.UUID,
-	dominantAttributeID *uuid.UUID,
+	streak *habitsmodel.Streak,
+	dominantAttribute *kaimodel.KaiAttribute,
 ) error {
 
-	if dominantAttributeID == nil {
+	if dominantAttribute == nil {
 		return nil
 	}
 
-	message, err := s.messageRepo.
-		FindRandomMessageByAttribute(
+	completedToday, err := s.habitRepo.
+		CountDailyCompleted(
 			ctx,
-			*dominantAttributeID,
+			tx,
+			userID,
 		)
 	if err != nil {
 		return errorHandler.NewAppError(
 			http.StatusInternalServerError,
-			"error al buscar un mensaje motivacional",
+			"error al calcular contexto de mensajes de Kai",
 		)
+	}
+
+	currentStreak := 0
+	if streak != nil {
+		currentStreak = streak.CurrentDays
+	}
+
+	attributeName := ""
+	if dominantAttribute.AttributeType != nil {
+		attributeName = dominantAttribute.AttributeType.Name
+	}
+
+	state := calculateState(
+		completedToday,
+		currentStreak,
+	)
+	mode := calculateMode(
+		attributeName,
+		currentStreak,
+		false,
+	)
+	messageTypes, contexts := messageFiltersForRules(
+		state,
+		mode,
+	)
+
+	message, err := s.messageRepo.
+		FindRandomMessageByRules(
+			ctx,
+			tx,
+			dominantAttribute.AttributeTypeID,
+			dominantAttribute.Value,
+			messageTypes,
+			contexts,
+		)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return errorHandler.NewAppError(
+				http.StatusInternalServerError,
+				"error al buscar un mensaje motivacional",
+			)
+		}
+
+		message, err = s.messageRepo.
+			FindRandomMessageByAttribute(
+				ctx,
+				tx,
+				dominantAttribute.AttributeTypeID,
+			)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+
+			return errorHandler.NewAppError(
+				http.StatusInternalServerError,
+				"error al buscar un mensaje motivacional",
+			)
+		}
 	}
 
 	userMessage := &messagesmodel.UserMessage{

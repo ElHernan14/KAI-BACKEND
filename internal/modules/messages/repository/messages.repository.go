@@ -20,12 +20,19 @@ func NewMessageRepository(db *gorm.DB) *MessageRepository {
 
 func (r *MessageRepository) FindRandomMessageByAttribute(
 	ctx context.Context,
+	tx *gorm.DB,
 	attributeID uuid.UUID,
 ) (*messagesmodel.KaiMessage, error) {
 
 	var message messagesmodel.KaiMessage
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Model(&messagesmodel.KaiMessage{}).
 		Joins(`
@@ -34,6 +41,58 @@ func (r *MessageRepository) FindRandomMessageByAttribute(
 		`).
 		Where("ma.atributo_kai_id = ?", attributeID).
 		Where("mensajes_kai.activo = true").
+		Order("RANDOM()").
+		First(&message).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &message, nil
+}
+
+func (r *MessageRepository) FindRandomMessageByRules(
+	ctx context.Context,
+	tx *gorm.DB,
+	attributeID uuid.UUID,
+	attributeValue int,
+	types []string,
+	contexts []string,
+) (*messagesmodel.KaiMessage, error) {
+
+	var message messagesmodel.KaiMessage
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	query := db.
+		WithContext(ctx).
+		Model(&messagesmodel.KaiMessage{}).
+		Joins(`
+			JOIN mensaje_atributos ma
+				ON ma.mensaje_kai_id = mensajes_kai.id
+		`).
+		Where("ma.atributo_kai_id = ?", attributeID).
+		Where("ma.nivel_minimo <= ?", attributeValue).
+		Where("mensajes_kai.activo = true")
+
+	if len(types) > 0 && len(contexts) > 0 {
+		query = query.Where(
+			"(mensajes_kai.tipo IN ? OR mensajes_kai.contexto IN ?)",
+			types,
+			contexts,
+		)
+	} else if len(types) > 0 {
+		query = query.Where("mensajes_kai.tipo IN ?", types)
+	} else if len(contexts) > 0 {
+		query = query.Where("mensajes_kai.contexto IN ?", contexts)
+	}
+
+	err := query.
 		Order("RANDOM()").
 		First(&message).
 		Error

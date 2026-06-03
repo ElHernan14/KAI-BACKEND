@@ -31,9 +31,16 @@ type XpRepository interface {
 
 	FindUserXPByCategory(
 		ctx context.Context,
+		tx *gorm.DB,
 		userID uuid.UUID,
 		categoryID uuid.UUID,
 	) (*xpmodel.UserXP, error)
+
+	FindTotalUserXP(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+	) (int, error)
 
 	UpdateUserXP(
 		ctx context.Context,
@@ -43,6 +50,7 @@ type XpRepository interface {
 
 	FindXPAttributesByCategory(
 		ctx context.Context,
+		tx *gorm.DB,
 		categoryID uuid.UUID,
 	) ([]xpmodel.XPAttribute, error)
 }

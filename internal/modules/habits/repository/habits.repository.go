@@ -21,6 +21,14 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
+func (r *Repository) dbFromTx(tx *gorm.DB) *gorm.DB {
+	if tx != nil {
+		return tx
+	}
+
+	return r.db
+}
+
 func (r *Repository) FindUserHabits(ctx context.Context, userID uuid.UUID) ([]habitsmodel.UserHabit, error) {
 	var habits []habitsmodel.UserHabit
 
@@ -40,10 +48,16 @@ func (r *Repository) FindUserHabits(ctx context.Context, userID uuid.UUID) ([]ha
 	return habits, nil
 }
 
-func (r *Repository) CountDailyCompleted(ctx context.Context, userID uuid.UUID) (int, error) {
+func (r *Repository) CountDailyCompleted(ctx context.Context, tx *gorm.DB, userID uuid.UUID) (int, error) {
 	var completed sql.NullInt64
 
-	err := r.db.WithContext(ctx).
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.WithContext(ctx).
 		Table("registros_habito AS rh").
 		Select("COUNT(DISTINCT rh.habito_usuario_id)").
 		Joins("JOIN habitos_usuario AS hu ON hu.id = rh.habito_usuario_id").
@@ -296,13 +310,20 @@ func (r *Repository) FindHabitDetailByID(
 
 func (r *Repository) FindUserHabitByID(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 	habitID uuid.UUID,
 ) (*habitsmodel.UserHabit, error) {
 
 	var habit habitsmodel.UserHabit
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Preload("HabitCatalog").
 		Where("id = ?", habitID).
@@ -375,13 +396,20 @@ func (r *Repository) FindTodayRecords(
 
 func (r *Repository) FindTodayRecord(
 	ctx context.Context,
+	tx *gorm.DB,
 	userHabitID uuid.UUID,
 	date time.Time,
 ) (*habitsmodel.HabitRecord, error) {
 
 	var record habitsmodel.HabitRecord
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Where("habito_usuario_id = ?", userHabitID).
 		Where("fecha = CURRENT_DATE").
@@ -441,12 +469,19 @@ func (r *Repository) UpdateHabitRecord(
 
 func (r *Repository) FindStreakByHabit(
 	ctx context.Context,
+	tx *gorm.DB,
 	userHabitID uuid.UUID,
 ) (*habitsmodel.Streak, error) {
 
 	var streak habitsmodel.Streak
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Where("habito_usuario_id = ?", userHabitID).
 		First(&streak).

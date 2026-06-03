@@ -61,13 +61,20 @@ func (r *Repository) CreateKaiState(
 
 func (r *Repository) FindKaiAttribute(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 	attributeID uuid.UUID,
 ) (*kaimodel.KaiAttribute, error) {
 
 	var attr kaimodel.KaiAttribute
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Where("usuario_id = ?", userID).
 		Where("atributo_kai_id = ?", attributeID).
@@ -101,13 +108,21 @@ func (r *Repository) UpdateKaiAttribute(
 
 func (r *Repository) FindUserKaiAttributes(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 ) ([]kaimodel.KaiAttribute, error) {
 
 	var attributes []kaimodel.KaiAttribute
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
+		Preload("AttributeType").
 		Where(
 			"usuario_id = ?",
 			userID,
@@ -124,12 +139,19 @@ func (r *Repository) FindUserKaiAttributes(
 
 func (r *Repository) FindKaiStateByUserID(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 ) (*kaimodel.KaiState, error) {
 
 	var state kaimodel.KaiState
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Where(
 			"usuario_id = ?",

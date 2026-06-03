@@ -68,7 +68,7 @@ func (s *Service) GetUserHabits(ctx context.Context, userID uuid.UUID) (*habitsd
 		return nil, errorHandler.NewAppError(http.StatusInternalServerError, "error al obtener hábitos del usuario")
 	}
 
-	completedToday, err := s.repository.CountDailyCompleted(ctx, userID)
+	completedToday, err := s.repository.CountDailyCompleted(ctx, nil, userID)
 	if err != nil {
 		log.Printf("Error counting daily completed habits: %v", err)
 		return nil, errorHandler.NewAppError(http.StatusInternalServerError, "error al contar hábitos completados hoy")
@@ -318,6 +318,7 @@ func (s *Service) DeactivateHabit(
 
 	userHabit, err := s.repository.FindUserHabitByID(
 		ctx,
+		nil,
 		userID,
 		habitID,
 	)

@@ -37,6 +37,7 @@ type KaiRepository interface {
 
 	FindKaiStateByUserID(
 		ctx context.Context,
+		tx *gorm.DB,
 		userID uuid.UUID,
 	) (*kaimodel.KaiState, error)
 
@@ -48,6 +49,7 @@ type KaiRepository interface {
 
 	FindKaiAttribute(
 		ctx context.Context,
+		tx *gorm.DB,
 		userID uuid.UUID,
 		attributeID uuid.UUID,
 	) (*kaimodel.KaiAttribute, error)
@@ -60,6 +62,7 @@ type KaiRepository interface {
 
 	FindUserKaiAttributes(
 		ctx context.Context,
+		tx *gorm.DB,
 		userID uuid.UUID,
 	) ([]kaimodel.KaiAttribute, error)
 

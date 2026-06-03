@@ -2,6 +2,7 @@ package xp
 
 import (
 	"context"
+	"database/sql"
 
 	xpmodel "kai-back/internal/modules/xp/models"
 
@@ -56,13 +57,20 @@ func (r *Repository) CreateUserXP(
 
 func (r *Repository) FindUserXPByCategory(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 	categoryID uuid.UUID,
 ) (*xpmodel.UserXP, error) {
 
 	var xp xpmodel.UserXP
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Where("usuario_id = ?", userID).
 		Where("categoria_xp_id = ?", categoryID).
@@ -74,6 +82,35 @@ func (r *Repository) FindUserXPByCategory(
 	}
 
 	return &xp, nil
+}
+
+func (r *Repository) FindTotalUserXP(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+) (int, error) {
+
+	var total sql.NullInt64
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
+		WithContext(ctx).
+		Model(&xpmodel.UserXP{}).
+		Select("COALESCE(SUM(valor), 0)").
+		Where("usuario_id = ?", userID).
+		Scan(&total).
+		Error
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(total.Int64), nil
 }
 
 func (r *Repository) UpdateUserXP(
@@ -96,12 +133,19 @@ func (r *Repository) UpdateUserXP(
 
 func (r *Repository) FindXPAttributesByCategory(
 	ctx context.Context,
+	tx *gorm.DB,
 	categoryID uuid.UUID,
 ) ([]xpmodel.XPAttribute, error) {
 
 	var mappings []xpmodel.XPAttribute
 
-	err := r.db.
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
 		WithContext(ctx).
 		Where(
 			"categoria_xp_id = ?",

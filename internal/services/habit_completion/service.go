@@ -61,6 +61,7 @@ func (s *Service) CompleteHabit(
 		func(tx *gorm.DB) error {
 			habit, rec, err := s.validateHabit(
 				ctx,
+				tx,
 				userID,
 				userHabitID,
 			)
@@ -120,16 +121,13 @@ func (s *Service) CompleteHabit(
 				return err
 			}
 
-			dominantAttributeValue := uuid.Nil
-			if dominantAttribute != nil {
-				dominantAttributeValue = *dominantAttribute
-			}
-
 			err = s.updateKaiState(
 				ctx,
 				tx,
 				userID,
-				&dominantAttributeValue,
+				habit,
+				streak,
+				dominantAttribute,
 			)
 			if err != nil {
 				return err
@@ -139,13 +137,12 @@ func (s *Service) CompleteHabit(
 				ctx,
 				tx,
 				userID,
-				&dominantAttributeValue,
+				streak,
+				dominantAttribute,
 			)
 			if err != nil {
 				return err
 			}
-
-			_ = streak
 
 			return nil
 		},

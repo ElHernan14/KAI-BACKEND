@@ -16,7 +16,17 @@ type MessageRepositoryPort interface {
 
 	FindRandomMessageByAttribute(
 		ctx context.Context,
+		tx *gorm.DB,
 		attributeID uuid.UUID,
+	) (*messagesmodel.KaiMessage, error)
+
+	FindRandomMessageByRules(
+		ctx context.Context,
+		tx *gorm.DB,
+		attributeID uuid.UUID,
+		attributeValue int,
+		types []string,
+		contexts []string,
 	) (*messagesmodel.KaiMessage, error)
 
 	CreateUserMessage(
