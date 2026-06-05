@@ -534,3 +534,34 @@ func (r *Repository) UpdateStreak(
 		Save(streak).
 		Error
 }
+
+func (r *Repository) FindTodayHabitRecords(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	date time.Time,
+) ([]habitsmodel.HabitRecord, error) {
+	var records []habitsmodel.HabitRecord
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
+		WithContext(ctx).
+		Joins("JOIN habitos_usuario AS hu ON hu.id = registros_habito.habito_usuario_id").
+		Where("registros_habito.usuario_id = ?", userID).
+		Where("hu.activo = ?", true).
+		Where("registros_habito.fecha = CURRENT_DATE").
+		Order("registros_habito.fecha DESC").
+		Find(&records).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}

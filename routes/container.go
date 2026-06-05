@@ -12,6 +12,7 @@ import (
 	habitsServ "kai-back/internal/modules/habits/service"
 	homemodule "kai-back/internal/modules/home"
 	homerepository "kai-back/internal/modules/home/repository"
+	kaiModule "kai-back/internal/modules/kai"
 	kairepository "kai-back/internal/modules/kai/repository"
 	messageRepository "kai-back/internal/modules/messages/repository"
 	usermodule "kai-back/internal/modules/users"
@@ -30,6 +31,7 @@ type AppContainer struct {
 	HabitsController *habitsController.Controller
 	HomeController   *homemodule.Controller
 	UserController   *usermodule.Controller
+	KaiController    *kaiModule.KaiController
 	AuthMiddleware   gin.HandlerFunc
 }
 
@@ -70,18 +72,21 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 	userService := usermodule.NewService(userRepository)
 	habitsService := habitsServ.NewService(habitsRepository, habitsDailyRecordsService)
 	homeService := homemodule.NewService(homeRepository, habitsDailyRecordsService)
+	kaiService := kaiModule.NewKaiService(kaiRepository, messageRepo, habitsRepository, xpRepository, habitsDailyRecordsService)
 
 	//controllers
 	authController := authmodule.NewController(authService)
 	habitsController := habitsController.NewController(habitsService, habitCompletionService)
 	homeController := homemodule.NewController(homeService)
 	userController := usermodule.NewController(userService)
+	kaiController := kaiModule.NewKaiController(kaiService)
 
 	return &AppContainer{
 		AuthController:   authController,
 		HabitsController: habitsController,
 		HomeController:   homeController,
 		UserController:   userController,
+		KaiController:    kaiController,
 		AuthMiddleware:   middleware.AuthMiddleware(cfg.JWTSecret),
 	}
 }

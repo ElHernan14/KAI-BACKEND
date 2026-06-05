@@ -19,7 +19,7 @@ type UserMessage struct {
 
 	CreatedAt time.Time `gorm:"column:created_at"`
 
-	Message *KaiMessage `gorm:"foreignKey:MessageID"`
+	KaiMessage *KaiMessage `gorm:"foreignKey:MessageID"`
 }
 
 func (UserMessage) TableName() string {

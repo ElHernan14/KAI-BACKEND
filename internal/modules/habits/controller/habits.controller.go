@@ -29,6 +29,7 @@ func NewController(service servicePort.ServicePort, completHabitService completH
 func (ctrl *Controller) GetHabits(c *gin.Context) {
 	userID, err := helpers.ValidateUserUUID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
@@ -61,11 +62,13 @@ func (ctrl *Controller) GetCatalogByCategory(c *gin.Context) {
 
 	categoryID, err := helpers.ValidateCategoryID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
 	userID, err := helpers.ValidateUserUUID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
@@ -111,6 +114,7 @@ func (ctrl *Controller) SelectHabit(c *gin.Context) {
 
 	userID, err := helpers.ValidateUserUUID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
@@ -134,11 +138,13 @@ func (ctrl *Controller) GetHabitDetail(c *gin.Context) {
 
 	userID, err := helpers.ValidateUserUUID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
 	habitUserID, err := helpers.ValidateUserHabitID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
@@ -163,11 +169,13 @@ func (ctrl *Controller) DeactivateHabit(c *gin.Context) {
 
 	userID, err := helpers.ValidateUserUUID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
 	habitUserID, err := helpers.ValidateUserHabitID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
@@ -191,11 +199,13 @@ func (ctrl *Controller) DeactivateHabit(c *gin.Context) {
 func (ctrl *Controller) CompleteHabit(c *gin.Context) {
 	userID, err := helpers.ValidateUserUUID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 
 	habitUserID, err := helpers.ValidateUserHabitID(c)
 	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 

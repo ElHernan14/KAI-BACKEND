@@ -34,4 +34,10 @@ type MessageRepositoryPort interface {
 		tx *gorm.DB,
 		userMessage *messagesmodel.UserMessage,
 	) error
+
+	FindLastUserMessage(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+	) (*messagesmodel.UserMessage, error)
 }

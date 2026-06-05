@@ -2,6 +2,7 @@ package messagesRepository
 
 import (
 	"context"
+	"errors"
 	messagesmodel "kai-back/internal/modules/messages/models"
 
 	"github.com/google/uuid"
@@ -114,4 +115,34 @@ func (r *MessageRepository) CreateUserMessage(
 		WithContext(ctx).
 		Create(userMessage).
 		Error
+}
+
+func (r *MessageRepository) FindLastUserMessage(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+) (*messagesmodel.UserMessage, error) {
+	var userMessage messagesmodel.UserMessage
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
+		Preload("KaiMessage").
+		Where("usuario_id = ?", userID).
+		Order("mostrado_en DESC").
+		First(&userMessage).
+		Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+	return &userMessage, nil
 }

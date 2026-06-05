@@ -23,17 +23,6 @@ type KaiRepository interface {
 		tx *gorm.DB,
 		kaiState *kaimodel.KaiState,
 	) error
-	// AddAttributeValue(
-	// 	ctx context.Context,
-	// 	userID uuid.UUID,
-	// 	attributeTypeID uuid.UUID,
-	// 	value int,
-	// ) error
-
-	// FindDominantAttribute(
-	// 	ctx context.Context,
-	// 	userID uuid.UUID,
-	// ) (*kaimodel.KaiAttribute, error)
 
 	FindKaiStateByUserID(
 		ctx context.Context,

@@ -125,4 +125,11 @@ type HabitsRepository interface {
 		tx *gorm.DB,
 		userHabitID uuid.UUID,
 	) (*habitsmodel.Streak, error)
+
+	FindTodayHabitRecords(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		date time.Time,
+	) ([]habitsmodel.HabitRecord, error)
 }

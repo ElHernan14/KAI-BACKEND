@@ -160,3 +160,30 @@ func (r *Repository) FindXPAttributesByCategory(
 
 	return mappings, nil
 }
+
+func (r *Repository) FindUserXPByUserID(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+) ([]xpmodel.UserXP, error) {
+	var userXP []xpmodel.UserXP
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
+		WithContext(ctx).
+		Preload("Category").
+		Where("usuario_id = ?", userID).
+		Find(&userXP).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return userXP, nil
+}

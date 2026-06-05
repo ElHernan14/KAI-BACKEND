@@ -16,18 +16,6 @@ type XpRepository interface {
 		tx *gorm.DB,
 		userXP []xpmodel.UserXP,
 	) error
-	// AddUserXP(
-	// 	ctx context.Context,
-	// 	tx *gorm.DB,
-	// 	userID uuid.UUID,
-	// 	categoryID uuid.UUID,
-	// 	xp int,
-	// ) error
-
-	// FindAttributeRelationsByCategoryID(
-	// 	ctx context.Context,
-	// 	categoryID uuid.UUID,
-	// ) ([]xpmodel.XPAttribute, error)
 
 	FindUserXPByCategory(
 		ctx context.Context,
@@ -53,4 +41,10 @@ type XpRepository interface {
 		tx *gorm.DB,
 		categoryID uuid.UUID,
 	) ([]xpmodel.XPAttribute, error)
+
+	FindUserXPByUserID(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+	) ([]xpmodel.UserXP, error)
 }

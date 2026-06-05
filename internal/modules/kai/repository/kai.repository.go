@@ -153,6 +153,7 @@ func (r *Repository) FindKaiStateByUserID(
 
 	err := db.
 		WithContext(ctx).
+		Preload("DominantAttribute").
 		Where(
 			"usuario_id = ?",
 			userID,
