@@ -9,6 +9,7 @@ type UserResponse struct {
 	Name         string  `json:"nombre"`
 	Email        string  `json:"email"`
 	ProfileBase  *string `json:"perfil_base"`
+	ProfilePhoto *string `json:"foto_perfil"`
 	KaiStage     string  `json:"etapa_kai"`
 	GlobalStreak int     `json:"racha_global"`
 	InactiveDays int     `json:"dias_inactivo"`

@@ -5,6 +5,7 @@ import (
 	"kai-back/internal/middleware"
 	"kai-back/internal/shared/response"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -22,6 +23,9 @@ func SetupRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	)
 
 	router.GET("/health", healthHandler)
+	if err := os.MkdirAll("uploads/profiles", 0755); err == nil {
+		router.Static("/uploads/profiles", "uploads/profiles")
+	}
 
 	api := router.Group("/api/v1")
 

@@ -2,12 +2,15 @@ package users
 
 import (
 	"context"
+	"fmt"
 	usersdto "kai-back/internal/modules/users/dto"
 	contextutil "kai-back/internal/shared/context"
 	errorHandler "kai-back/internal/shared/errors"
 	"kai-back/internal/shared/response"
 	validatorx "kai-back/internal/shared/validator"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,6 +20,7 @@ type ServicePort interface {
 	GetMe(ctx context.Context, userID uuid.UUID) (*usersdto.MeResponse, error)
 	UpdateMe(ctx context.Context, userID uuid.UUID, req usersdto.UpdateMeRequest) error
 	ChangePassword(ctx context.Context, userID uuid.UUID, req usersdto.ChangePasswordRequest) error
+	UpdateProfilePhoto(ctx context.Context, userID uuid.UUID) error
 }
 
 type Controller struct {
@@ -104,7 +108,7 @@ func (ctrl *Controller) UpdateMe(c *gin.Context) {
 		req,
 	)
 	if errService != nil {
-		_ = c.Error(err)
+		_ = c.Error(errService)
 		return
 	}
 
@@ -114,6 +118,105 @@ func (ctrl *Controller) UpdateMe(c *gin.Context) {
 			http.StatusOK,
 			"perfil actualizado correctamente",
 		),
+	)
+}
+
+func (ctrl *Controller) UpdateProfilePhoto(c *gin.Context) {
+
+	userIDString, exists := contextutil.GetUserID(c.Request.Context())
+	if !exists {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusUnauthorized,
+				"usuario no autenticado",
+			),
+		)
+		return
+	}
+
+	userID, err := uuid.Parse(userIDString)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	file, err := c.FormFile("foto")
+	if err != nil {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusBadRequest,
+				"foto de perfil requerida",
+			),
+		)
+		return
+	}
+
+	if file.Size > maxProfilePhotoMB*1024*1024 {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusBadRequest,
+				fmt.Sprintf("la foto no puede superar %dMB", maxProfilePhotoMB),
+			),
+		)
+		return
+	}
+
+	ext := normalizedProfilePhotoExt(file.Filename)
+	if !isAllowedProfilePhotoExt(ext) {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusBadRequest,
+				"formato de foto no permitido",
+			),
+		)
+		return
+	}
+
+	if err := ctrl.service.UpdateProfilePhoto(c.Request.Context(), userID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	if err := os.MkdirAll(profileUploadDir, 0755); err != nil {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusInternalServerError,
+				"no se pudo preparar carpeta de uploads",
+			),
+		)
+		return
+	}
+
+	if err := removeProfilePhotos(userID); err != nil {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusInternalServerError,
+				"no se pudo reemplazar foto de perfil",
+			),
+		)
+		return
+	}
+
+	fileName := userID.String() + ext
+	destination := filepath.Join(profileUploadDir, fileName)
+
+	if err := c.SaveUploadedFile(file, destination); err != nil {
+		_ = c.Error(
+			errorHandler.NewAppError(
+				http.StatusInternalServerError,
+				"no se pudo guardar foto de perfil",
+			),
+		)
+		return
+	}
+
+	profilePhotoURL := "/" + filepath.ToSlash(destination)
+
+	c.JSON(
+		http.StatusOK,
+		response.Success(gin.H{
+			"foto_perfil": profilePhotoURL,
+		}),
 	)
 }
 

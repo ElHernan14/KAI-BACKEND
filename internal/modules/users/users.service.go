@@ -42,6 +42,7 @@ func (s *Service) GetMe(
 		Name:         user.Name,
 		Email:        user.Email,
 		ProfileBase:  user.BaseProfile,
+		ProfilePhoto: findProfilePhotoURL(userID),
 		KaiStage:     user.KaiStage,
 		GlobalStreak: user.GlobalStreak,
 		InactiveDays: user.InactiveDays,
@@ -128,4 +129,21 @@ func (s *Service) ChangePassword(
 		userID,
 		newPasswordHash,
 	)
+}
+
+func (s *Service) UpdateProfilePhoto(
+	ctx context.Context,
+	userID uuid.UUID,
+) error {
+
+	user, err := s.repository.FindUserByID(ctx, userID)
+	if user == nil || err != nil {
+		log.Println("error fetching user:", err)
+		return errorHandler.NewAppError(
+			http.StatusNotFound,
+			"usuario no encontrado",
+		)
+	}
+
+	return nil
 }
