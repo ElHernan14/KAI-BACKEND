@@ -7,6 +7,7 @@ import (
 	kai "kai-back/internal/modules/kai/repository"
 	message "kai-back/internal/modules/messages/repository"
 	xp "kai-back/internal/modules/xp/repository"
+	userActivitySynchronizationService "kai-back/internal/services/user_activity_synchronization"
 	transaction "kai-back/internal/shared/transaction"
 
 	"github.com/google/uuid"
@@ -14,12 +15,13 @@ import (
 )
 
 type Service struct {
-	habitRepo                 habit.HabitsRepository
-	xpRepo                    xp.XpRepository
-	kaiRepo                   kai.KaiRepository
-	messageRepo               message.MessageRepositoryPort
-	habitsDailyRecordsService habitDailyRecordsServicePort.HabitsDailyRecordsServicePort
-	transactionManager        transaction.TransactionManager
+	habitRepo                          habit.HabitsRepository
+	xpRepo                             xp.XpRepository
+	kaiRepo                            kai.KaiRepository
+	messageRepo                        message.MessageRepositoryPort
+	habitsDailyRecordsService          habitDailyRecordsServicePort.HabitsDailyRecordsServicePort
+	UserActivitySynchronizationService userActivitySynchronizationService.ServicePort
+	transactionManager                 transaction.TransactionManager
 }
 
 func NewService(
@@ -27,16 +29,18 @@ func NewService(
 	xpRepo xp.XpRepository,
 	kaiRepo kai.KaiRepository,
 	messageRepo message.MessageRepositoryPort,
+	userActivitySyncService userActivitySynchronizationService.ServicePort,
 	habitsDailyRecordsService habitDailyRecordsServicePort.HabitsDailyRecordsServicePort,
 	transactionManager transaction.TransactionManager,
 ) *Service {
 	return &Service{
-		habitRepo:                 habitRepo,
-		xpRepo:                    xpRepo,
-		kaiRepo:                   kaiRepo,
-		messageRepo:               messageRepo,
-		habitsDailyRecordsService: habitsDailyRecordsService,
-		transactionManager:        transactionManager,
+		habitRepo:                          habitRepo,
+		xpRepo:                             xpRepo,
+		kaiRepo:                            kaiRepo,
+		messageRepo:                        messageRepo,
+		UserActivitySynchronizationService: userActivitySyncService,
+		habitsDailyRecordsService:          habitsDailyRecordsService,
+		transactionManager:                 transactionManager,
 	}
 }
 
@@ -46,8 +50,9 @@ func (s *Service) CompleteHabit(
 	userHabitID uuid.UUID,
 	value *string,
 ) error {
+	var err error
 	// Aseguramos que existan registros de hábitos para hoy antes de completar el hábito del usuario
-	err := s.habitsDailyRecordsService.
+	err = s.habitsDailyRecordsService.
 		EnsureTodayHabitRecords(
 			ctx,
 			userID,
@@ -55,8 +60,9 @@ func (s *Service) CompleteHabit(
 	if err != nil {
 		return err
 	}
+
 	// Iniciamos la transacción para completar el hábito del usuario y todas las operaciones relacionadas
-	return s.transactionManager.WithTransaction(
+	err = s.transactionManager.WithTransaction(
 		ctx,
 		func(tx *gorm.DB) error {
 			habit, rec, err := s.validateHabit(
@@ -147,4 +153,19 @@ func (s *Service) CompleteHabit(
 			return nil
 		},
 	)
+
+	if err != nil {
+		return err
+	}
+
+	// Aseguramos Sincronizar toda la información temporal del usuario dependiente del paso del tiempo y de su actividad reciente.
+	err = s.UserActivitySynchronizationService.SyncUserActivityState(
+		ctx,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

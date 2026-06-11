@@ -565,3 +565,64 @@ func (r *Repository) FindTodayHabitRecords(
 
 	return records, nil
 }
+
+func (r *Repository) FindLastCompletedHabitDate(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+) (*time.Time, error) {
+
+	var lastDate *time.Time
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
+		WithContext(ctx).
+		Model(&habitsmodel.HabitRecord{}).
+		Select("MAX(fecha)").
+		Where("usuario_id = ?", userID).
+		Where("completado = true").
+		Scan(&lastDate).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return lastDate, nil
+}
+
+func (r *Repository) FindCompletedHabitDates(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+) ([]time.Time, error) {
+
+	var dates []time.Time
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
+		WithContext(ctx).
+		Model(&habitsmodel.HabitRecord{}).
+		Distinct("fecha").
+		Where("usuario_id = ?", userID).
+		Where("completado = true").
+		Order("fecha DESC").
+		Pluck("fecha", &dates).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dates, nil
+}

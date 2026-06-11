@@ -118,3 +118,28 @@ func (r *Repository) UpdatePassword(
 		Update("password_hash", passwordHash).
 		Error
 }
+
+func (r *Repository) UpdateActivityStats(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	globalStreak int,
+	inactiveDays int,
+) error {
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Model(&usersmodel.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"racha_global":  globalStreak,
+			"dias_inactivo": inactiveDays,
+		}).
+		Error
+}

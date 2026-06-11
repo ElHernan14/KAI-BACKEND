@@ -17,6 +17,7 @@ import (
 	xpSummary "kai-back/internal/modules/xp/dto"
 	xpmodel "kai-back/internal/modules/xp/models"
 	xpRepository "kai-back/internal/modules/xp/repository"
+	userActivitySynchronizationService "kai-back/internal/services/user_activity_synchronization"
 )
 
 type ServicePort interface {
@@ -27,11 +28,12 @@ type ServicePort interface {
 }
 
 type KaiService struct {
-	kaiRepository             kaiRepository.KaiRepository
-	messageRepository         messageRepository.MessageRepositoryPort
-	habitsRepository          habitsRepository.HabitsRepository
-	xpRepository              xpRepository.XpRepository
-	habitsDailyRecordsService habitsServ.HabitsDailyRecordsServicePort
+	kaiRepository                      kaiRepository.KaiRepository
+	messageRepository                  messageRepository.MessageRepositoryPort
+	habitsRepository                   habitsRepository.HabitsRepository
+	xpRepository                       xpRepository.XpRepository
+	habitsDailyRecordsService          habitsServ.HabitsDailyRecordsServicePort
+	UserActivitySynchronizationService userActivitySynchronizationService.ServicePort
 }
 
 func NewKaiService(
@@ -40,13 +42,15 @@ func NewKaiService(
 	habitsRepository habitsRepository.HabitsRepository,
 	xpRepository xpRepository.XpRepository,
 	habitsDailyRecordsService habitsServ.HabitsDailyRecordsServicePort,
+	userActivitySyncService userActivitySynchronizationService.ServicePort,
 ) *KaiService {
 	return &KaiService{
-		kaiRepository:             kaiRepository,
-		messageRepository:         messageRepository,
-		habitsRepository:          habitsRepository,
-		xpRepository:              xpRepository,
-		habitsDailyRecordsService: habitsDailyRecordsService,
+		kaiRepository:                      kaiRepository,
+		messageRepository:                  messageRepository,
+		habitsRepository:                   habitsRepository,
+		xpRepository:                       xpRepository,
+		habitsDailyRecordsService:          habitsDailyRecordsService,
+		UserActivitySynchronizationService: userActivitySyncService,
 	}
 }
 
@@ -61,6 +65,15 @@ func (s *KaiService) GetKaiDashboard(
 			ctx,
 			userID,
 		)
+	if err != nil {
+		return nil, err
+	}
+
+	// Aseguramos Sincronizar toda la información temporal del usuario dependiente del paso del tiempo y de su actividad reciente.
+	err = s.UserActivitySynchronizationService.SyncUserActivityState(
+		ctx,
+		userID,
+	)
 	if err != nil {
 		return nil, err
 	}

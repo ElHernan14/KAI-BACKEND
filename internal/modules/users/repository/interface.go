@@ -16,4 +16,11 @@ type UsersRepository interface {
 	CreateConfiguration(ctx context.Context, tx *gorm.DB, config *usersmodel.UserConfiguration) error
 	Update(ctx context.Context, user *usersmodel.User) error
 	UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
+	UpdateActivityStats(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		globalStreak int,
+		inactiveDays int,
+	) error
 }

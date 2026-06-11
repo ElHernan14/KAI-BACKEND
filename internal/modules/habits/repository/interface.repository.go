@@ -132,4 +132,16 @@ type HabitsRepository interface {
 		userID uuid.UUID,
 		date time.Time,
 	) ([]habitsmodel.HabitRecord, error)
+
+	FindLastCompletedHabitDate(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+	) (*time.Time, error)
+
+	FindCompletedHabitDates(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+	) ([]time.Time, error)
 }

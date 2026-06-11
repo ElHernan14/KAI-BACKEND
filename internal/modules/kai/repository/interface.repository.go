@@ -61,4 +61,14 @@ type KaiRepository interface {
 		userID uuid.UUID,
 		message string,
 	) error
+
+	UpdateTemporalState(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		energy int,
+		state string,
+		mode string,
+		inactiveDays int,
+	) error
 }

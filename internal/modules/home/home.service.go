@@ -7,6 +7,8 @@ import (
 	habitsDailyRecordsService "kai-back/internal/modules/habits/service"
 	homedto "kai-back/internal/modules/home/dto"
 	repository "kai-back/internal/modules/home/repository"
+	userrepo "kai-back/internal/modules/users/repository"
+	userActivitySynchronizationService "kai-back/internal/services/user_activity_synchronization"
 	errorHandler "kai-back/internal/shared/errors"
 
 	"github.com/google/uuid"
@@ -17,17 +19,23 @@ type ServicePort interface {
 }
 
 type Service struct {
-	repository                repository.HomeRepository
-	habitsDailyRecordsService habitsDailyRecordsService.HabitsDailyRecordsServicePort
+	repository                         repository.HomeRepository
+	UserRepository                     userrepo.UsersRepository
+	habitsDailyRecordsService          habitsDailyRecordsService.HabitsDailyRecordsServicePort
+	UserActivitySynchronizationService userActivitySynchronizationService.ServicePort
 }
 
 func NewService(
 	repository repository.HomeRepository,
+	userRepo userrepo.UsersRepository,
+	userActivitySyncService userActivitySynchronizationService.ServicePort,
 	habitsDailyRecordsService habitsDailyRecordsService.HabitsDailyRecordsServicePort,
 ) *Service {
 	return &Service{
-		repository:                repository,
-		habitsDailyRecordsService: habitsDailyRecordsService,
+		repository:                         repository,
+		UserRepository:                     userRepo,
+		UserActivitySynchronizationService: userActivitySyncService,
+		habitsDailyRecordsService:          habitsDailyRecordsService,
 	}
 }
 
@@ -39,6 +47,15 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 			ctx,
 			userID,
 		)
+	if err != nil {
+		return nil, err
+	}
+
+	// Aseguramos Sincronizar toda la información temporal del usuario dependiente del paso del tiempo y de su actividad reciente.
+	err = s.UserActivitySynchronizationService.SyncUserActivityState(
+		ctx,
+		userID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +73,13 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 		return nil, err
 	}
 
-	currentStreak, err := s.repository.FindCurrentStreak(ctx, userID)
-	if err != nil {
+	// currentStreak, err := s.repository.FindCurrentStreak(ctx, userID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	user, err := s.UserRepository.FindUserByID(ctx, userID)
+	if user == nil || err != nil {
 		return nil, err
 	}
 
@@ -100,7 +122,7 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 		},
 		Message:       message,
 		TotalXP:       totalXP,
-		CurrentStreak: currentStreak,
+		CurrentStreak: user.GlobalStreak,
 		HabitsToday:   habitsResponse,
 		DailyProgress: homedto.DailyProgress{
 			Total:     total,

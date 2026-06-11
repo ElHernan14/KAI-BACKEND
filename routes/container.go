@@ -19,6 +19,7 @@ import (
 	userrepository "kai-back/internal/modules/users/repository"
 	xprepository "kai-back/internal/modules/xp/repository"
 	habitCompletionService "kai-back/internal/services/habit_completion"
+	userActivitySynchronizationService "kai-back/internal/services/user_activity_synchronization"
 	initializeruserservice "kai-back/internal/services/user_initializer"
 	transactionGorm "kai-back/internal/shared/transaction"
 
@@ -48,11 +49,13 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 	//services
 	transaction := transactionGorm.NewGormTransactionManager(db)
 	habitsDailyRecordsService := habitsServ.NewHabitsDailyRecordsService(habitsRepository)
+	userActivitySyncService := userActivitySynchronizationService.New(transaction, userRepository, habitsRepository, kaiRepository)
 	habitCompletionService := habitCompletionService.NewService(
 		habitsRepository,
 		xpRepository,
 		kaiRepository,
 		messageRepo,
+		userActivitySyncService,
 		habitsDailyRecordsService,
 		transaction,
 	)
@@ -71,8 +74,8 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 	)
 	userService := usermodule.NewService(userRepository)
 	habitsService := habitsServ.NewService(habitsRepository, habitsDailyRecordsService)
-	homeService := homemodule.NewService(homeRepository, habitsDailyRecordsService)
-	kaiService := kaiModule.NewKaiService(kaiRepository, messageRepo, habitsRepository, xpRepository, habitsDailyRecordsService)
+	homeService := homemodule.NewService(homeRepository, userRepository, userActivitySyncService, habitsDailyRecordsService)
+	kaiService := kaiModule.NewKaiService(kaiRepository, messageRepo, habitsRepository, xpRepository, habitsDailyRecordsService, userActivitySyncService)
 
 	//controllers
 	authController := authmodule.NewController(authService)

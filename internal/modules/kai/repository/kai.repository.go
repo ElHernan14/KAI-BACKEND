@@ -203,3 +203,32 @@ func (r *Repository) UpdateLastMessage(
 		).
 		Error
 }
+
+func (r *Repository) UpdateTemporalState(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	energy int,
+	state string,
+	mode string,
+	inactiveDays int,
+) error {
+
+	db := r.db
+
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Model(&kaimodel.KaiState{}).
+		Where("usuario_id = ?", userID).
+		Updates(map[string]interface{}{
+			"energia":            energy,
+			"estado_actual":      state,
+			"modo_actual":        mode,
+			"dias_sin_actividad": inactiveDays,
+		}).
+		Error
+}
