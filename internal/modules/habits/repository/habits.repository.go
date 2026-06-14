@@ -583,7 +583,7 @@ func (r *Repository) FindLastCompletedHabitDate(
 	err := db.
 		WithContext(ctx).
 		Model(&habitsmodel.HabitRecord{}).
-		Select("MAX(fecha)").
+		Select("COALESCE(MAX(fecha), NOW())").
 		Where("usuario_id = ?", userID).
 		Where("completado = true").
 		Scan(&lastDate).
