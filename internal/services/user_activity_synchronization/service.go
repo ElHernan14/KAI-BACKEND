@@ -50,6 +50,9 @@ func (s *Service) SyncUserActivityState(
 			if err != nil {
 				return err
 			}
+			if lastActivity == nil {
+				return nil
+			}
 
 			inactiveDays := s.calculateInactiveDays(
 				lastActivity,

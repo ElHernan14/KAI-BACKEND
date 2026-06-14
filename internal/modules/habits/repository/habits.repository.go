@@ -572,7 +572,7 @@ func (r *Repository) FindLastCompletedHabitDate(
 	userID uuid.UUID,
 ) (*time.Time, error) {
 
-	var lastDate *time.Time
+	var lastDate sql.NullTime
 
 	db := r.db
 
@@ -583,7 +583,7 @@ func (r *Repository) FindLastCompletedHabitDate(
 	err := db.
 		WithContext(ctx).
 		Model(&habitsmodel.HabitRecord{}).
-		Select("COALESCE(MAX(fecha), NOW())").
+		Select("MAX(fecha)").
 		Where("usuario_id = ?", userID).
 		Where("completado = true").
 		Scan(&lastDate).
@@ -593,7 +593,7 @@ func (r *Repository) FindLastCompletedHabitDate(
 		return nil, err
 	}
 
-	return lastDate, nil
+	return &lastDate.Time, nil
 }
 
 func (r *Repository) FindCompletedHabitDates(
