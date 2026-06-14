@@ -115,15 +115,30 @@ func (s *Service) buildAuthResponse(user *usersmodel.User) (*authdto.AuthRespons
 	}, nil
 }
 
-func (s *Service) RenewToken(userID string, email string) (*authdto.ValidateTokenResponse, error) {
+func (s *Service) RenewToken(ctx context.Context, userID string, email string) (*authdto.ValidateTokenResponse, error) {
 	token, err := authshared.GenerateToken(userID, email, s.jwtSecret, s.jwtTTL)
 	if err != nil {
 		log.Println("error renewing user token:", err)
 		return nil, errorHandler.NewAppError(http.StatusInternalServerError, "No se pudo renovar token")
 	}
 
+	normalizedEmail := normalizeEmail(email)
+
+	user, err := s.userRepository.FindUserByEmail(ctx, normalizedEmail)
+	if err != nil {
+		log.Println("error getting user by email:", err)
+		return nil, errorHandler.NewAppError(http.StatusInternalServerError, fmt.Sprintf("No se pudo obtener usuario con email: %s", email))
+	}
+	if user == nil {
+		return nil, errorHandler.NewAppError(http.StatusUnauthorized, "Credenciales invalidas")
+	}
+
 	return &authdto.ValidateTokenResponse{
 		Valid: true,
+		UserResponse: authdto.AuthUserResponse{
+			Email: user.Email,
+			Name:  user.Name,
+		},
 		Token: token,
 	}, nil
 }

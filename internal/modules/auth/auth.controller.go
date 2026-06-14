@@ -16,7 +16,7 @@ import (
 type ServicePort interface {
 	Register(ctx context.Context, req authdto.RegisterRequest) (*authdto.AuthResponse, error)
 	Login(ctx context.Context, req authdto.LoginRequest) (*authdto.AuthResponse, error)
-	RenewToken(userID string, email string) (*authdto.ValidateTokenResponse, error)
+	RenewToken(ctx context.Context, userID string, email string) (*authdto.ValidateTokenResponse, error)
 	GoogleLogin(ctx context.Context, req authdto.GoogleLoginRequest) (*authdto.AuthResponse, error)
 }
 
@@ -77,7 +77,7 @@ func (ctrl *Controller) ValidateToken(c *gin.Context) {
 		return
 	}
 
-	validateResponse, err := ctrl.service.RenewToken(authUser.UserID, authUser.Email)
+	validateResponse, err := ctrl.service.RenewToken(c.Request.Context(), authUser.UserID, authUser.Email)
 	if err != nil {
 		_ = c.Error(err)
 		return
