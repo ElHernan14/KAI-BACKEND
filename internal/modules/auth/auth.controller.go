@@ -17,6 +17,7 @@ type ServicePort interface {
 	Register(ctx context.Context, req authdto.RegisterRequest) (*authdto.AuthResponse, error)
 	Login(ctx context.Context, req authdto.LoginRequest) (*authdto.AuthResponse, error)
 	RenewToken(userID string, email string) (*authdto.ValidateTokenResponse, error)
+	GoogleLogin(ctx context.Context, req authdto.GoogleLoginRequest) (*authdto.AuthResponse, error)
 }
 
 type Controller struct {
@@ -83,4 +84,28 @@ func (ctrl *Controller) ValidateToken(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response.Success(validateResponse))
+}
+
+func (ctrl *Controller) GoogleLogin(c *gin.Context) {
+	var req authdto.GoogleLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(errorHandler.NewAppError(http.StatusBadRequest, "request json invalido"))
+		return
+	}
+
+	if message, hasError := validatorx.ValidateStruct(req); hasError {
+		_ = c.Error(errorHandler.NewAppError(http.StatusBadRequest, message))
+		return
+	}
+
+	//verificar desde aca'
+
+	authResponse, err := ctrl.service.GoogleLogin(c.Request.Context(), req)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, response.SuccessWithCode(http.StatusCreated, authResponse))
+
 }

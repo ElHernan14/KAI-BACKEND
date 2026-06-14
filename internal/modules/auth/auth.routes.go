@@ -6,4 +6,5 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller, authMiddlew
 	router.POST("/register", controller.Register)
 	router.POST("/login", controller.Login)
 	router.GET("/validate", authMiddleware, controller.ValidateToken)
+	router.POST("/google", controller.GoogleLogin)
 }

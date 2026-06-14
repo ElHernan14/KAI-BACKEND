@@ -71,6 +71,7 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 		initializerUserService,
 		cfg.JWTSecret,
 		time.Duration(cfg.JWTTTLHours)*time.Hour,
+		cfg.GoogleClientID,
 	)
 	userService := usermodule.NewService(userRepository)
 	habitsService := habitsServ.NewService(habitsRepository, habitsDailyRecordsService)

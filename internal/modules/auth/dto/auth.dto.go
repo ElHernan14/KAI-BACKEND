@@ -11,6 +11,10 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
+type GoogleLoginRequest struct {
+	IDToken string `json:"idToken" validate:"required"`
+}
+
 type AuthUserResponse struct {
 	Name  string `json:"nombre"`
 	Email string `json:"email"`
