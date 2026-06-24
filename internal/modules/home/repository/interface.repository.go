@@ -12,4 +12,5 @@ type HomeRepository interface {
 	FindCurrentStreak(ctx context.Context, userID uuid.UUID) (int, error)
 	FindDailyHabits(ctx context.Context, userID uuid.UUID) ([]DailyHabitRow, error)
 	FindFallbackMessage(ctx context.Context) (*string, error)
+	FindRandomEvolutionMessage(ctx context.Context) (*string, error)
 }

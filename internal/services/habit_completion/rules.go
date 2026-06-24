@@ -1,15 +1,13 @@
 package habitcompletion
 
 import (
+	kaievolution "kai-back/internal/modules/kai/evolution"
+
 	"strings"
 	"unicode"
 )
 
 const (
-	kaiStageBaby  = "bebe"
-	kaiStageYoung = "joven"
-	kaiStageAdult = "adulto"
-
 	kaiStateCurious = "curioso"
 	kaiStateHappy   = "feliz"
 	kaiStateProud   = "orgulloso"
@@ -23,9 +21,6 @@ const (
 	kaiEnergyMax = 100
 	kaiBondMin   = 0
 	kaiBondMax   = 100
-
-	kaiStageYoungMinXP = 500
-	kaiStageAdultMinXP = 1500
 
 	happyCompletedHabitsThreshold = 3
 	proudStreakThreshold          = 7
@@ -41,15 +36,7 @@ type kaiCompletionRules struct {
 }
 
 func calculateStage(totalXP int) string {
-	if totalXP >= kaiStageAdultMinXP {
-		return kaiStageAdult
-	}
-
-	if totalXP >= kaiStageYoungMinXP {
-		return kaiStageYoung
-	}
-
-	return kaiStageBaby
+	return kaievolution.StageForXP(totalXP)
 }
 
 func calculateState(completedToday int, currentStreak int) string {

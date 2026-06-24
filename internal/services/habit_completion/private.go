@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	habitsmodel "kai-back/internal/modules/habits/models"
+	kaievolution "kai-back/internal/modules/kai/evolution"
 	kaimodel "kai-back/internal/modules/kai/models"
 	messagesmodel "kai-back/internal/modules/messages/models"
 	errorHandler "kai-back/internal/shared/errors"
@@ -402,6 +403,14 @@ func (s *Service) recalculateDominantAttribute(
 	return &dominant, nil
 }
 
+type evolutionResult struct {
+	Evolved        bool
+	PreviousStage  string
+	State          *kaimodel.KaiState
+	EventActive    bool
+	EventExpiresAt *time.Time
+}
+
 func (s *Service) updateKaiState(
 	ctx context.Context,
 	tx *gorm.DB,
@@ -409,43 +418,27 @@ func (s *Service) updateKaiState(
 	habit *habitsmodel.UserHabit,
 	streak *habitsmodel.Streak,
 	dominantAttribute *kaimodel.KaiAttribute,
-) error {
-
-	kaiState, err := s.kaiRepo.
-		FindKaiStateByUserID(
-			ctx,
-			tx,
-			userID,
-		)
+) (*evolutionResult, error) {
+	kaiState, err := s.kaiRepo.FindKaiStateByUserID(ctx, tx, userID)
 	if err != nil {
-		return errorHandler.NewAppError(
+		return nil, errorHandler.NewAppError(
 			http.StatusInternalServerError,
 			"error al buscar el estado de Kai del usuario",
 		)
 	}
 
 	now := time.Now()
-	totalXP, err := s.xpRepo.
-		FindTotalUserXP(
-			ctx,
-			tx,
-			userID,
-		)
+	totalXP, err := s.xpRepo.FindTotalUserXP(ctx, tx, userID)
 	if err != nil {
-		return errorHandler.NewAppError(
+		return nil, errorHandler.NewAppError(
 			http.StatusInternalServerError,
 			"error al calcular el XP total del usuario",
 		)
 	}
 
-	completedToday, err := s.habitRepo.
-		CountDailyCompleted(
-			ctx,
-			tx,
-			userID,
-		)
+	completedToday, err := s.habitRepo.CountDailyCompleted(ctx, tx, userID)
 	if err != nil {
-		return errorHandler.NewAppError(
+		return nil, errorHandler.NewAppError(
 			http.StatusInternalServerError,
 			"error al calcular los habitos completados del dia",
 		)
@@ -456,48 +449,31 @@ func (s *Service) updateKaiState(
 		currentStreak = streak.CurrentDays
 	}
 
+	previousStage := kaievolution.NormalizeStage(kaiState.CurrentStage)
 	nextStage := calculateStage(totalXP)
-	stageChanged := kaiState.CurrentStage != nextStage
+	stageChanged := previousStage != nextStage
 
 	attributeName := ""
 	if dominantAttribute != nil {
-		kaiState.DominantAttributeID =
-			&dominantAttribute.AttributeTypeID
-
+		kaiState.DominantAttributeID = &dominantAttribute.AttributeTypeID
 		if dominantAttribute.AttributeType != nil {
 			attributeName = dominantAttribute.AttributeType.Name
 		}
 	}
 
 	kaiState.LastInteraction = &now
-
 	kaiState.DaysWithoutActivity = 0
-
 	kaiState.RecoveryMode = false
-
 	kaiState.CurrentStage = nextStage
+	kaiState.CurrentState = calculateState(completedToday, currentStreak)
 
-	kaiState.CurrentState = calculateState(
-		completedToday,
-		currentStreak,
-	)
-
-	currentMode := calculateMode(
-		attributeName,
-		currentStreak,
-		stageChanged,
-	)
+	currentMode := calculateMode(attributeName, currentStreak, stageChanged)
 	kaiState.CurrentMode = &currentMode
-
 	kaiState.Energy = clampInt(
-		kaiState.Energy+calculateEnergyGain(
-			habit.HabitCatalog.Difficulty,
-			currentStreak,
-		),
+		kaiState.Energy+calculateEnergyGain(habit.HabitCatalog.Difficulty, currentStreak),
 		kaiEnergyMin,
 		kaiEnergyMax,
 	)
-
 	kaiState.BondLevel = clampInt(
 		kaiState.BondLevel+calculateBondGain(currentStreak),
 		kaiBondMin,
@@ -506,23 +482,22 @@ func (s *Service) updateKaiState(
 
 	if stageChanged {
 		kaiState.LastEvolution = &now
+		imageKey := kaievolution.ImageKeyForStage(nextStage)
+		kaiState.KaiImage = &imageKey
 	}
 
-	return s.kaiRepo.
-		UpdateKaiState(
-			ctx,
-			tx,
-			kaiState,
-		)
-}
+	if err := s.kaiRepo.UpdateKaiState(ctx, tx, kaiState); err != nil {
+		return nil, err
+	}
 
-func (s *Service) checkEvolution(
-	ctx context.Context,
-	tx *gorm.DB,
-	userID uuid.UUID,
-	DominantAttributeID uuid.UUID,
-) error {
-	return nil
+	eventActive, eventExpiresAt := kaievolution.EventWindow(kaiState.LastEvolution, now)
+	return &evolutionResult{
+		Evolved:        stageChanged,
+		PreviousStage:  previousStage,
+		State:          kaiState,
+		EventActive:    eventActive,
+		EventExpiresAt: eventExpiresAt,
+	}, nil
 }
 
 func (s *Service) generateMotivationalMessage(
@@ -569,6 +544,7 @@ func (s *Service) generateMotivationalMessage(
 		currentStreak,
 		false,
 	)
+
 	messageTypes, contexts := messageFiltersForRules(
 		state,
 		mode,

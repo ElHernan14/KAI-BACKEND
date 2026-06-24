@@ -33,7 +33,7 @@ func buildInitialKaiState(
 		UserID: userID,
 
 		CurrentState: "CURIOSO",
-		CurrentStage: "BEBE",
+		CurrentStage: "cachorro",
 		CurrentMode:  &currentMode,
 
 		Energy: 100,

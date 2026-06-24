@@ -2,6 +2,8 @@ package habitcompletion
 
 import (
 	"context"
+
+	habitsdto "kai-back/internal/modules/habits/dto"
 	habit "kai-back/internal/modules/habits/repository"
 	habitDailyRecordsServicePort "kai-back/internal/modules/habits/service"
 	kai "kai-back/internal/modules/kai/repository"
@@ -49,85 +51,46 @@ func (s *Service) CompleteHabit(
 	userID uuid.UUID,
 	userHabitID uuid.UUID,
 	value *string,
-) error {
-	var err error
-	// Aseguramos que existan registros de hábitos para hoy antes de completar el hábito del usuario
-	err = s.habitsDailyRecordsService.
-		EnsureTodayHabitRecords(
-			ctx,
-			userID,
-		)
+) (*habitsdto.CompleteHabitResponse, error) {
+	var result *habitsdto.CompleteHabitResponse
+
+	err := s.habitsDailyRecordsService.EnsureTodayHabitRecords(ctx, userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Iniciamos la transacción para completar el hábito del usuario y todas las operaciones relacionadas
 	err = s.transactionManager.WithTransaction(
 		ctx,
 		func(tx *gorm.DB) error {
-			habit, rec, err := s.validateHabit(
-				ctx,
-				tx,
-				userID,
-				userHabitID,
-			)
+			habit, rec, err := s.validateHabit(ctx, tx, userID, userHabitID)
 			if err != nil {
 				return err
 			}
 
-			record, err := s.completeRecord(
-				ctx,
-				tx,
-				habit,
-				value,
-				rec,
-			)
-			if err != nil {
+			if _, err = s.completeRecord(ctx, tx, habit, value, rec); err != nil {
 				return err
 			}
-			_ = record
 
-			streak, err := s.updateStreak(
-				ctx,
-				tx,
-				userID,
-				habit,
-			)
+			streak, err := s.updateStreak(ctx, tx, userID, habit)
 			if err != nil {
 				return err
 			}
 
-			xpGranted, err := s.grantXP(
-				ctx,
-				tx,
-				userID,
-				habit,
-			)
+			xpGranted, err := s.grantXP(ctx, tx, userID, habit)
 			if err != nil {
 				return err
 			}
 
-			err = s.grantKaiAttributes(
-				ctx,
-				tx,
-				userID,
-				habit,
-				xpGranted,
-			)
+			if err = s.grantKaiAttributes(ctx, tx, userID, habit, xpGranted); err != nil {
+				return err
+			}
+
+			dominantAttribute, err := s.recalculateDominantAttribute(ctx, tx, userID)
 			if err != nil {
 				return err
 			}
 
-			dominantAttribute, err := s.recalculateDominantAttribute(
-				ctx,
-				tx,
-				userID,
-			)
-			if err != nil {
-				return err
-			}
-
-			err = s.updateKaiState(
+			evolution, err := s.updateKaiState(
 				ctx,
 				tx,
 				userID,
@@ -139,33 +102,43 @@ func (s *Service) CompleteHabit(
 				return err
 			}
 
-			err = s.generateMotivationalMessage(
-				ctx,
-				tx,
-				userID,
-				streak,
-				dominantAttribute,
-			)
-			if err != nil {
+			if err = s.generateMotivationalMessage(ctx, tx, userID, streak, dominantAttribute); err != nil {
 				return err
+			}
+
+			currentStreak := 0
+			if streak != nil {
+				currentStreak = streak.CurrentDays
+			}
+
+			result = &habitsdto.CompleteHabitResponse{
+				HabitoUsuarioID:     userHabitID,
+				XPGanada:            xpGranted,
+				RachaActual:         currentStreak,
+				EnergiaActual:       evolution.State.Energy,
+				NivelVinculo:        evolution.State.BondLevel,
+				AtributoDominanteID: evolution.State.DominantAttributeID,
+				Evoluciono:          evolution.Evolved,
+				EtapaAnterior:       evolution.PreviousStage,
+				EtapaActual:         evolution.State.CurrentStage,
+				EventoEvolucion: habitsdto.EvolutionEventResponse{
+					Activo:     evolution.EventActive,
+					Etapa:      evolution.State.CurrentStage,
+					IniciadoEn: evolution.State.LastEvolution,
+					ExpiraEn:   evolution.EventExpiresAt,
+				},
 			}
 
 			return nil
 		},
 	)
-
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Aseguramos Sincronizar toda la información temporal del usuario dependiente del paso del tiempo y de su actividad reciente.
-	err = s.UserActivitySynchronizationService.SyncUserActivityState(
-		ctx,
-		userID,
-	)
-	if err != nil {
-		return err
+	if err = s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return result, nil
 }

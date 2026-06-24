@@ -3,6 +3,7 @@ package home
 import (
 	"context"
 	"errors"
+	"time"
 
 	habitsmodel "kai-back/internal/modules/habits/models"
 	messagesmodel "kai-back/internal/modules/messages/models"
@@ -17,13 +18,14 @@ type Repository struct {
 }
 
 type KaiSummaryRow struct {
-	CurrentState string
-	CurrentStage string
-	Energy       int
-	KaiImage     *string
-	LastMessage  *string
-	RecoveryMode bool
-	BondLevel    int
+	CurrentState  string
+	CurrentStage  string
+	Energy        int
+	KaiImage      *string
+	LastMessage   *string
+	RecoveryMode  bool
+	BondLevel     int
+	LastEvolution *time.Time
 }
 
 type DailyHabitRow struct {
@@ -49,7 +51,8 @@ func (r *Repository) FindKaiSummary(ctx context.Context, userID uuid.UUID) (*Kai
 			imagen_kai AS kai_image,
 			ultimo_mensaje AS last_message,
 			modo_recuperacion AS recovery_mode,
-			nivel_vinculo AS bond_level
+			nivel_vinculo AS bond_level,
+			ultima_evolucion AS last_evolution
 		`).
 		Where("usuario_id = ?", userID).
 		Take(&row).
@@ -132,7 +135,32 @@ func (r *Repository) FindFallbackMessage(ctx context.Context) (*string, error) {
 		Model(&messagesmodel.KaiMessage{}).
 		Select("mensaje").
 		Where("activo = true").
+		Where("tipo <> ? AND (contexto IS NULL OR contexto <> ?)", "evolucion", "evolucion").
 		Order("created_at DESC").
+		Take(&message).
+		Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if message.Message == "" {
+		return nil, nil
+	}
+
+	return &message.Message, nil
+}
+
+func (r *Repository) FindRandomEvolutionMessage(ctx context.Context) (*string, error) {
+	var message messagesmodel.KaiMessage
+
+	err := r.db.WithContext(ctx).
+		Model(&messagesmodel.KaiMessage{}).
+		Select("mensaje").
+		Where("activo = true").
+		Where("(tipo = ? OR contexto = ?)", "evolucion", "evolucion").
+		Order("RANDOM()").
 		Take(&message).
 		Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

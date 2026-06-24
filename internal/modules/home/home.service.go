@@ -3,10 +3,12 @@ package home
 import (
 	"context"
 	"net/http"
+	"time"
 
 	habitsDailyRecordsService "kai-back/internal/modules/habits/service"
 	homedto "kai-back/internal/modules/home/dto"
 	repository "kai-back/internal/modules/home/repository"
+	kaievolution "kai-back/internal/modules/kai/evolution"
 	userrepo "kai-back/internal/modules/users/repository"
 	userActivitySynchronizationService "kai-back/internal/services/user_activity_synchronization"
 	errorHandler "kai-back/internal/shared/errors"
@@ -40,23 +42,10 @@ func NewService(
 }
 
 func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeResponse, error) {
-
-	// Aseguramos que existan los registros diarios para hoy antes de obtener la información del home
-	err := s.habitsDailyRecordsService.
-		EnsureTodayHabitRecords(
-			ctx,
-			userID,
-		)
-	if err != nil {
+	if err := s.habitsDailyRecordsService.EnsureTodayHabitRecords(ctx, userID); err != nil {
 		return nil, err
 	}
-
-	// Aseguramos Sincronizar toda la información temporal del usuario dependiente del paso del tiempo y de su actividad reciente.
-	err = s.UserActivitySynchronizationService.SyncUserActivityState(
-		ctx,
-		userID,
-	)
-	if err != nil {
+	if err := s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -73,11 +62,6 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 		return nil, err
 	}
 
-	// currentStreak, err := s.repository.FindCurrentStreak(ctx, userID)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	user, err := s.UserRepository.FindUserByID(ctx, userID)
 	if user == nil || err != nil {
 		return nil, err
@@ -88,19 +72,18 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 		return nil, err
 	}
 
-	message, err := s.resolveMessage(ctx, kai.LastMessage)
+	evolutionActive, evolutionExpiresAt := kaievolution.EventWindow(kai.LastEvolution, time.Now())
+	message, err := s.resolveMessage(ctx, kai.LastMessage, evolutionActive)
 	if err != nil {
 		return nil, err
 	}
 
 	habitsResponse := make([]homedto.DailyHabitSummary, 0, len(dailyHabits))
 	completed := 0
-
 	for _, habit := range dailyHabits {
 		if habit.Completed {
 			completed++
 		}
-
 		habitsResponse = append(habitsResponse, homedto.DailyHabitSummary{
 			ID:        habit.ID.String(),
 			Name:      habit.Name,
@@ -110,7 +93,6 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 	}
 
 	total := len(habitsResponse)
-
 	return &homedto.HomeResponse{
 		Kai: homedto.KaiHomeSummary{
 			CurrentState: kai.CurrentState,
@@ -120,7 +102,13 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 			RecoveryMode: kai.RecoveryMode,
 			KaiImage:     kai.KaiImage,
 		},
-		Message:       message,
+		Message: message,
+		EvolutionEvent: homedto.EvolutionEventResponse{
+			Active:    evolutionActive,
+			Stage:     kai.CurrentStage,
+			StartedAt: kai.LastEvolution,
+			ExpiresAt: evolutionExpiresAt,
+		},
 		TotalXP:       totalXP,
 		CurrentStreak: user.GlobalStreak,
 		HabitsToday:   habitsResponse,
@@ -132,7 +120,21 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 	}, nil
 }
 
-func (s *Service) resolveMessage(ctx context.Context, kaiMessage *string) (string, error) {
+func (s *Service) resolveMessage(
+	ctx context.Context,
+	kaiMessage *string,
+	evolutionActive bool,
+) (string, error) {
+	if evolutionActive {
+		message, err := s.repository.FindRandomEvolutionMessage(ctx)
+		if err != nil {
+			return "", err
+		}
+		if message != nil && *message != "" {
+			return *message, nil
+		}
+	}
+
 	if kaiMessage != nil && *kaiMessage != "" {
 		return *kaiMessage, nil
 	}

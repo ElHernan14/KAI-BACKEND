@@ -1,13 +1,15 @@
 package kaidto
 
 import (
-	xpSummary "kai-back/internal/modules/xp/dto"
 	"time"
+
+	xpSummary "kai-back/internal/modules/xp/dto"
 )
 
 type KaiDashboardResponse struct {
 	EstadoKai          KaiStateResponse                   `json:"estado_kai"`
 	MensajeEmocional   string                             `json:"mensaje_emocional"`
+	EventoEvolucion    EvolutionEventResponse             `json:"evento_evolucion"`
 	Atributos          []KaiAttributeResponse             `json:"atributos"`
 	CategoriaDominante *xpSummary.CategorySummaryResponse `json:"categoria_dominante"`
 	CategoriaMenor     *xpSummary.CategorySummaryResponse `json:"categoria_menos_dominante"`
@@ -24,6 +26,13 @@ type KaiStateResponse struct {
 	ModoActual        *string    `json:"modo_actual"`
 	UltimaEvolucion   *time.Time `json:"ultima_evolucion"`
 	AtributoDominante string     `json:"atributo_dominante"`
+}
+
+type EvolutionEventResponse struct {
+	Activo     bool       `json:"activo"`
+	Etapa      string     `json:"etapa,omitempty"`
+	IniciadoEn *time.Time `json:"iniciado_en,omitempty"`
+	ExpiraEn   *time.Time `json:"expira_en,omitempty"`
 }
 
 type KaiAttributeResponse struct {

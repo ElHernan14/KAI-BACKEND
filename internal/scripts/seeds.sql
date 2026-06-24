@@ -264,3 +264,50 @@ INSERT INTO public.estado_kai (
     1,
     NULL
 );
+-- =========================================================
+-- SEED: mensajes de evolucion para demo
+-- =========================================================
+
+INSERT INTO public.mensajes_kai (
+    id,
+    tipo,
+    contexto,
+    tono,
+    mensaje,
+    rareza,
+    activo
+) VALUES
+(
+    '9e6dc15c-e7c9-469c-a0f1-f38ec3f08b01',
+    'evolucion',
+    'evolucion',
+    'celebracion',
+    '¡Kai evolucionó gracias a tus hábitos! Este cambio también refleja tu progreso.',
+    'comun',
+    true
+),
+(
+    '9e6dc15c-e7c9-469c-a0f1-f38ec3f08b02',
+    'evolucion',
+    'evolucion',
+    'celebracion',
+    '¡Mirá cuánto crecieron juntos! Kai está celebrando su nueva etapa.',
+    'comun',
+    true
+),
+(
+    '9e6dc15c-e7c9-469c-a0f1-f38ec3f08b03',
+    'evolucion',
+    'evolucion',
+    'celebracion',
+    'Tu constancia le dio a Kai una nueva forma. ¡Sigan avanzando!',
+    'comun',
+    true
+)
+ON CONFLICT (id) DO UPDATE SET
+    tipo = EXCLUDED.tipo,
+    contexto = EXCLUDED.contexto,
+    tono = EXCLUDED.tono,
+    mensaje = EXCLUDED.mensaje,
+    rareza = EXCLUDED.rareza,
+    activo = EXCLUDED.activo;

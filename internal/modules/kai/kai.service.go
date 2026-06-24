@@ -10,6 +10,7 @@ import (
 	habitsRepository "kai-back/internal/modules/habits/repository"
 	habitsServ "kai-back/internal/modules/habits/service"
 	kaidto "kai-back/internal/modules/kai/dto"
+	kaievolution "kai-back/internal/modules/kai/evolution"
 	kaimodel "kai-back/internal/modules/kai/models"
 	kaiRepository "kai-back/internal/modules/kai/repository"
 	messagesmodel "kai-back/internal/modules/messages/models"
@@ -142,6 +143,8 @@ func (s *KaiService) GetKaiDashboard(
 		userXP,
 	)
 
+	evolutionActive, evolutionExpiresAt := kaievolution.EventWindow(state.LastEvolution, time.Now())
+
 	// - mapear DTO
 	return &kaidto.KaiDashboardResponse{
 		EstadoKai: kaidto.KaiStateResponse{
@@ -152,12 +155,19 @@ func (s *KaiService) GetKaiDashboard(
 			NivelVinculo:      state.BondLevel,
 			ModoRecuperacion:  state.RecoveryMode,
 			ImagenKai:         state.KaiImage,
+			UltimaEvolucion:   state.LastEvolution,
 			AtributoDominante: state.DominantAttribute.Name,
 		},
 
 		Atributos: s.mapKaiAttributes(attributes),
 
 		MensajeEmocional: motivationalMessage,
+		EventoEvolucion: kaidto.EvolutionEventResponse{
+			Activo:     evolutionActive,
+			Etapa:      state.CurrentStage,
+			IniciadoEn: state.LastEvolution,
+			ExpiraEn:   evolutionExpiresAt,
+		},
 
 		ProgresoDiario: dailyProgress,
 

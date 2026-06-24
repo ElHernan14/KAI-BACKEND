@@ -221,7 +221,7 @@ func (ctrl *Controller) CompleteHabit(c *gin.Context) {
 		return
 	}
 
-	err = ctrl.completHabitService.CompleteHabit(
+	result, err := ctrl.completHabitService.CompleteHabit(
 		c.Request.Context(),
 		userID,
 		habitUserID,
@@ -234,6 +234,6 @@ func (ctrl *Controller) CompleteHabit(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		response.Success("habito completado correctamente"),
+		response.Success(result),
 	)
 }
