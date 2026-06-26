@@ -9,45 +9,61 @@ import (
 	"time"
 
 	"google.golang.org/api/idtoken"
+	"gorm.io/gorm"
 
+	"kai-back/internal/config"
 	authdto "kai-back/internal/modules/auth/dto"
+	authmodel "kai-back/internal/modules/auth/models"
 	authrepository "kai-back/internal/modules/auth/repository"
 	usersmodel "kai-back/internal/modules/users/models"
 	userrepository "kai-back/internal/modules/users/repository"
 	initializerUser "kai-back/internal/services/user_initializer"
 	authshared "kai-back/internal/shared/auth"
 	errorHandler "kai-back/internal/shared/errors"
+	mailService "kai-back/internal/shared/mail"
+	"kai-back/internal/shared/security"
+	transaction "kai-back/internal/shared/transaction"
 )
 
 type Service struct {
-	repository      authrepository.AuthRepository
-	userRepository  userrepository.UsersRepository
-	initializerUser initializerUser.Service
-	jwtSecret       string
-	jwtTTL          time.Duration
-	googleClientID  string
+	repository         authrepository.AuthRepository
+	userRepository     userrepository.UsersRepository
+	initializerUser    initializerUser.Service
+	transactionManager transaction.TransactionManager
+	jwtSecret          string
+	jwtTTL             time.Duration
+	googleClientID     string
+	mailService        mailService.MailService
+	config             config.Config
 }
 
 func NewService(
 	repository authrepository.AuthRepository,
 	userRepository userrepository.UsersRepository,
 	initializerUser initializerUser.Service,
+	transactionManager transaction.TransactionManager,
 	jwtSecret string,
 	jwtTTL time.Duration,
 	googleClientID string,
+	mailServ mailService.MailService,
+	config config.Config,
 ) *Service {
 	return &Service{
-		repository:      repository,
-		userRepository:  userRepository,
-		initializerUser: initializerUser,
-		jwtSecret:       jwtSecret,
-		jwtTTL:          jwtTTL,
-		googleClientID:  googleClientID,
+		repository:         repository,
+		userRepository:     userRepository,
+		initializerUser:    initializerUser,
+		transactionManager: transactionManager,
+		jwtSecret:          jwtSecret,
+		jwtTTL:             jwtTTL,
+		googleClientID:     googleClientID,
+		mailService:        mailServ,
+		config:             config,
 	}
 }
 
 func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*authdto.AuthResponse, error) {
 	email := normalizeEmail(req.Email)
+	username := normalizeUsername(req.Username)
 
 	existingUser, err := s.userRepository.FindUserByEmail(ctx, email)
 	if err != nil {
@@ -56,6 +72,15 @@ func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*a
 	}
 	if existingUser != nil {
 		return nil, errorHandler.NewAppError(http.StatusConflict, "Email ya registrado.")
+	}
+
+	existingUsername, err := s.userRepository.FindUserByUsername(ctx, username)
+	if err != nil {
+		log.Println("error getting user by username:", err)
+		return nil, errorHandler.NewAppError(http.StatusInternalServerError, fmt.Sprintf("No se pudo obtener usuario con username: %s", username))
+	}
+	if existingUsername != nil {
+		return nil, errorHandler.NewAppError(http.StatusConflict, "Username ya registrado.")
 	}
 
 	passwordHash, err := authshared.HashPassword(req.Password)
@@ -67,6 +92,7 @@ func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*a
 	user := &usersmodel.User{
 		Name:         strings.TrimSpace(req.Name),
 		Email:        email,
+		Username:     &username,
 		PasswordHash: passwordHash,
 		KaiStage:     "cachorro",
 		GlobalStreak: 0,
@@ -81,12 +107,18 @@ func (s *Service) Register(ctx context.Context, req authdto.RegisterRequest) (*a
 }
 
 func (s *Service) Login(ctx context.Context, req authdto.LoginRequest) (*authdto.AuthResponse, error) {
-	email := normalizeEmail(req.Email)
+	identifier := normalizeIdentifier(req.Identifier)
+	if identifier == "" {
+		identifier = normalizeIdentifier(req.Email)
+	}
+	if identifier == "" {
+		return nil, errorHandler.NewAppError(http.StatusBadRequest, "email o username es requerido")
+	}
 
-	user, err := s.userRepository.FindUserByEmail(ctx, email)
+	user, err := s.userRepository.FindUserByEmailOrUsername(ctx, identifier)
 	if err != nil {
-		log.Println("error getting user by email:", err)
-		return nil, errorHandler.NewAppError(http.StatusInternalServerError, fmt.Sprintf("No se pudo obtener usuario con email: %s", email))
+		log.Println("error getting user by login identifier:", err)
+		return nil, errorHandler.NewAppError(http.StatusInternalServerError, "No se pudo obtener usuario")
 	}
 	if user == nil {
 		return nil, errorHandler.NewAppError(http.StatusUnauthorized, "Credenciales invalidas")
@@ -108,8 +140,9 @@ func (s *Service) buildAuthResponse(user *usersmodel.User) (*authdto.AuthRespons
 
 	return &authdto.AuthResponse{
 		UserResponse: authdto.AuthUserResponse{
-			Email: user.Email,
-			Name:  user.Name,
+			Email:    user.Email,
+			Name:     user.Name,
+			Username: user.Username,
 		},
 		Token: token,
 	}, nil
@@ -136,8 +169,9 @@ func (s *Service) RenewToken(ctx context.Context, userID string, email string) (
 	return &authdto.ValidateTokenResponse{
 		Valid: true,
 		UserResponse: authdto.AuthUserResponse{
-			Email: user.Email,
-			Name:  user.Name,
+			Email:    user.Email,
+			Name:     user.Name,
+			Username: user.Username,
 		},
 		Token: token,
 	}, nil
@@ -145,6 +179,14 @@ func (s *Service) RenewToken(ctx context.Context, userID string, email string) (
 
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func normalizeUsername(username string) string {
+	return strings.ToLower(strings.TrimSpace(username))
+}
+
+func normalizeIdentifier(identifier string) string {
+	return strings.ToLower(strings.TrimSpace(identifier))
 }
 
 func (s *Service) GoogleLogin(ctx context.Context, req authdto.GoogleLoginRequest) (*authdto.AuthResponse, error) {
@@ -201,4 +243,89 @@ func (s *Service) GoogleLogin(ctx context.Context, req authdto.GoogleLoginReques
 	}
 
 	return s.buildAuthResponse(user)
+}
+
+func (s *Service) ForgotPassword(
+	ctx context.Context,
+	req authdto.ForgotPasswordRequest,
+) error {
+
+	user, err := s.repository.FindUserByEmail(ctx, req.Email)
+	if err != nil {
+		// No revelamos si existe o no.
+		return nil
+	}
+
+	code, err := security.GenerateResetCode()
+	if err != nil {
+		return err
+	}
+
+	codeHash := security.HashResetCode(code)
+
+	resetCode := &authmodel.PasswordResetCode{
+		UserID:    user.ID,
+		CodeHash:  codeHash,
+		ExpiresAt: time.Now().Add(10 * time.Minute),
+	}
+
+	if err := s.repository.CreatePasswordResetCode(ctx, resetCode); err != nil {
+		return err
+	}
+
+	return s.mailService.SendPasswordResetEmail(
+		user.Email,
+		code,
+	)
+}
+
+func (s *Service) ResetPassword(
+	ctx context.Context,
+	req authdto.ResetPasswordRequest,
+) error {
+
+	user, err := s.repository.FindUserByEmail(ctx, req.Email)
+	if err != nil {
+		return errorHandler.NewAppError(
+			http.StatusBadRequest,
+			"codigo invalido o expirado",
+		)
+	}
+
+	codeHash := security.HashResetCode(req.Code)
+
+	return s.transactionManager.WithTransaction(ctx, func(tx *gorm.DB) error {
+
+		resetCode, err := s.repository.FindValidPasswordResetCode(
+			ctx,
+			user.ID,
+			codeHash,
+		)
+		if err != nil {
+			return errorHandler.NewAppError(
+				http.StatusBadRequest,
+				"codigo invalido o expirado",
+			)
+		}
+
+		passwordHash, err := authshared.HashPassword(req.Password)
+		if err != nil {
+			return err
+		}
+
+		if err := s.repository.UpdateUserPassword(
+			ctx,
+			tx,
+			user.ID,
+			passwordHash,
+		); err != nil {
+			return err
+		}
+
+		return s.repository.MarkPasswordResetCodeUsed(
+			ctx,
+			tx,
+			resetCode.ID,
+		)
+	})
 }

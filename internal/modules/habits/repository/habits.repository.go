@@ -296,7 +296,10 @@ func (r *Repository) FindHabitDetailByID(
 		Model(&habitsmodel.UserHabit{}).
 		Preload("HabitCatalog").
 		Preload("HabitRecords", func(db *gorm.DB) *gorm.DB {
-			return db.Order("fecha DESC")
+			// Filtrar solo los registros de la última semana
+			return db.
+				Where("fecha >= NOW() - INTERVAL '7 days'").
+				Order("fecha DESC")
 		}).
 		Where(
 			"id = ? AND usuario_id = ? AND activo = true",

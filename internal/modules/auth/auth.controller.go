@@ -18,6 +18,14 @@ type ServicePort interface {
 	Login(ctx context.Context, req authdto.LoginRequest) (*authdto.AuthResponse, error)
 	RenewToken(ctx context.Context, userID string, email string) (*authdto.ValidateTokenResponse, error)
 	GoogleLogin(ctx context.Context, req authdto.GoogleLoginRequest) (*authdto.AuthResponse, error)
+	ForgotPassword(
+		ctx context.Context,
+		req authdto.ForgotPasswordRequest,
+	) error
+	ResetPassword(
+		ctx context.Context,
+		req authdto.ResetPasswordRequest,
+	) error
 }
 
 type Controller struct {
@@ -108,4 +116,46 @@ func (ctrl *Controller) GoogleLogin(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, response.SuccessWithCode(http.StatusCreated, authResponse))
 
+}
+
+func (ctrl *Controller) ForgotPassword(c *gin.Context) {
+	var req authdto.ForgotPasswordRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(errorHandler.NewAppError(http.StatusBadRequest, "body invalido"))
+		return
+	}
+
+	if message, hasError := validatorx.ValidateStruct(req); hasError {
+		_ = c.Error(errorHandler.NewAppError(http.StatusBadRequest, message))
+		return
+	}
+
+	if err := ctrl.service.ForgotPassword(c.Request.Context(), req); err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Success("si el email existe, se enviaron instrucciones de recuperacion"))
+}
+
+func (ctrl *Controller) ResetPassword(c *gin.Context) {
+	var req authdto.ResetPasswordRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(errorHandler.NewAppError(http.StatusBadRequest, "body invalido"))
+		return
+	}
+
+	if message, hasError := validatorx.ValidateStruct(req); hasError {
+		_ = c.Error(errorHandler.NewAppError(http.StatusBadRequest, message))
+		return
+	}
+
+	if err := ctrl.service.ResetPassword(c.Request.Context(), req); err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Success("contraseña actualizada correctamente"))
 }

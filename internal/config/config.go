@@ -8,6 +8,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	From     string
+}
+
 type Config struct {
 	DBHost         string
 	DBPort         int
@@ -19,6 +27,8 @@ type Config struct {
 	JWTSecret      string
 	JWTTTLHours    int
 	GoogleClientID string
+	FrontendURL    string
+	SMTP           SMTPConfig
 }
 
 func LoadConfig() Config {
@@ -29,6 +39,7 @@ func LoadConfig() Config {
 
 	port, _ := strconv.Atoi(getEnv("DB_PORT", "5432"))
 	jwtTTLHours, _ := strconv.Atoi(getEnv("JWT_TTL_HOURS", "1"))
+	smtpPort, _ := strconv.Atoi(getEnv("SMTP_PORT", "587"))
 
 	return Config{
 		DBHost:         getEnv("DB_HOST", "localhost"),
@@ -41,6 +52,14 @@ func LoadConfig() Config {
 		JWTSecret:      getEnv("JWT_SECRET", "super_secret_key"),
 		JWTTTLHours:    jwtTTLHours,
 		GoogleClientID: getEnv("GOOGLE_CLIENT_ID", ""),
+		FrontendURL:    getEnv("FRONTEND_URL", "smtp.gmail.com"),
+		SMTP: SMTPConfig{
+			Host:     getEnv("SMTP_HOST", "smtp.gmail.com"),
+			Port:     smtpPort,
+			User:     getEnv("SMTP_USER", "hernanbonne98@gmail.com"),
+			Password: getEnv("SMTP_PASSWORD", "app_password"),
+			From:     getEnv("SMTP_FROM", "KAI <hernanbonne98@gmail.com>"),
+		},
 	}
 }
 

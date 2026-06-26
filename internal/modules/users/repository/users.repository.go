@@ -80,6 +80,38 @@ func (r *Repository) FindUserByEmail(ctx context.Context, email string) (*usersm
 	return &user, nil
 }
 
+func (r *Repository) FindUserByUsername(ctx context.Context, username string) (*usersmodel.User, error) {
+	var user usersmodel.User
+
+	err := r.db.WithContext(ctx).Where("username = ?", username).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *Repository) FindUserByEmailOrUsername(ctx context.Context, identifier string) (*usersmodel.User, error) {
+	var user usersmodel.User
+
+	err := r.db.
+		WithContext(ctx).
+		Where("email = ? OR username = ?", identifier, identifier).
+		First(&user).
+		Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 func (r *Repository) CreateUser(
 	ctx context.Context,
 	tx *gorm.DB,

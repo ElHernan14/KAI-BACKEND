@@ -21,6 +21,7 @@ import (
 	habitCompletionService "kai-back/internal/services/habit_completion"
 	userActivitySynchronizationService "kai-back/internal/services/user_activity_synchronization"
 	initializeruserservice "kai-back/internal/services/user_initializer"
+	mail "kai-back/internal/shared/mail"
 	transactionGorm "kai-back/internal/shared/transaction"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,9 @@ type AppContainer struct {
 }
 
 func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
+	//config
+	appConfig := config.LoadConfig()
+
 	//repositories
 	authRepository := authrepository.NewRepository(db)
 	userRepository := userrepository.NewRepository(db)
@@ -47,6 +51,13 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 	messageRepo := messageRepository.NewMessageRepository(db)
 
 	//services
+	mailService := mail.NewService(mail.SMTPConfig{
+		Host:     appConfig.SMTP.Host,
+		Port:     appConfig.SMTP.Port,
+		User:     appConfig.SMTP.User,
+		Password: appConfig.SMTP.Password,
+		From:     appConfig.SMTP.From,
+	})
 	transaction := transactionGorm.NewGormTransactionManager(db)
 	habitsDailyRecordsService := habitsServ.NewHabitsDailyRecordsService(habitsRepository)
 	userActivitySyncService := userActivitySynchronizationService.New(transaction, userRepository, habitsRepository, kaiRepository)
@@ -69,9 +80,12 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 		authRepository,
 		userRepository,
 		initializerUserService,
+		transaction,
 		cfg.JWTSecret,
 		time.Duration(cfg.JWTTTLHours)*time.Hour,
 		cfg.GoogleClientID,
+		mailService,
+		appConfig,
 	)
 	userService := usermodule.NewService(userRepository)
 	habitsService := habitsServ.NewService(habitsRepository, habitsDailyRecordsService)

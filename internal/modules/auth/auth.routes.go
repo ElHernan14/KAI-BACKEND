@@ -7,4 +7,6 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller, authMiddlew
 	router.POST("/login", controller.Login)
 	router.GET("/validate", authMiddleware, controller.ValidateToken)
 	router.POST("/google", controller.GoogleLogin)
+	router.POST("/forgot-password", controller.ForgotPassword)
+	router.POST("/reset-password", controller.ResetPassword)
 }

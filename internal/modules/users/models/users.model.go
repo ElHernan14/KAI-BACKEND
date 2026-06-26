@@ -13,6 +13,7 @@ type User struct {
 	ID           uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	Name         string    `gorm:"column:nombre;type:varchar(100);not null" json:"nombre"`
 	Email        string    `gorm:"column:email;type:varchar(150);not null;unique" json:"email"`
+	Username     *string   `gorm:"column:username;type:varchar(30);unique" json:"username,omitempty"`
 	PasswordHash string    `gorm:"column:password_hash;type:text;not null" json:"-"`
 	RegisteredAt time.Time `gorm:"column:fecha_registro;autoCreateTime" json:"fecha_registro"`
 	BaseProfile  *string   `gorm:"column:perfil_base;type:varchar(30)" json:"perfil_base,omitempty"`
