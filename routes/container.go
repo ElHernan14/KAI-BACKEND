@@ -87,7 +87,7 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 		mailService,
 		appConfig,
 	)
-	userService := usermodule.NewService(userRepository)
+	userService := usermodule.NewService(userRepository, xpRepository, userActivitySyncService, habitsDailyRecordsService)
 	habitsService := habitsServ.NewService(habitsRepository, habitsDailyRecordsService)
 	homeService := homemodule.NewService(homeRepository, userRepository, userActivitySyncService, habitsDailyRecordsService)
 	kaiService := kaiModule.NewKaiService(kaiRepository, messageRepo, habitsRepository, xpRepository, habitsDailyRecordsService, userActivitySyncService)

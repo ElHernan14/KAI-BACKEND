@@ -25,4 +25,23 @@ type UsersRepository interface {
 		globalStreak int,
 		inactiveDays int,
 	) error
+	FindUserProfileByID(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+	) (*usersmodel.User, error)
+
+	UpdateUserProfile(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		updates map[string]interface{},
+	) error
+
+	UpdateUserConfiguration(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		updates map[string]interface{},
+	) error
 }

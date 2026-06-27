@@ -175,3 +175,78 @@ func (r *Repository) UpdateActivityStats(
 		}).
 		Error
 }
+
+func (r *Repository) FindUserProfileByID(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+) (*usersmodel.User, error) {
+
+	var user usersmodel.User
+
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	err := db.
+		WithContext(ctx).
+		Preload("Configuration").
+		Where("id = ?", userID).
+		First(&user).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *Repository) UpdateUserProfile(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	updates map[string]interface{},
+) error {
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Model(&usersmodel.User{}).
+		Where("id = ?", userID).
+		Updates(updates).
+		Error
+}
+
+func (r *Repository) UpdateUserConfiguration(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	updates map[string]interface{},
+) error {
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
+		WithContext(ctx).
+		Model(&usersmodel.UserConfiguration{}).
+		Where("usuario_id = ?", userID).
+		Updates(updates).
+		Error
+}

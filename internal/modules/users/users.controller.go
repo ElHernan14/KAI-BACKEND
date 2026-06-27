@@ -6,6 +6,7 @@ import (
 	usersdto "kai-back/internal/modules/users/dto"
 	contextutil "kai-back/internal/shared/context"
 	errorHandler "kai-back/internal/shared/errors"
+	helper "kai-back/internal/shared/helpers"
 	"kai-back/internal/shared/response"
 	validatorx "kai-back/internal/shared/validator"
 	"net/http"
@@ -21,6 +22,20 @@ type ServicePort interface {
 	UpdateMe(ctx context.Context, userID uuid.UUID, req usersdto.UpdateMeRequest) error
 	ChangePassword(ctx context.Context, userID uuid.UUID, req usersdto.ChangePasswordRequest) error
 	UpdateProfilePhoto(ctx context.Context, userID uuid.UUID) error
+	GetUserProfile(
+		ctx context.Context,
+		userID uuid.UUID,
+	) (*usersdto.UserProfileResponse, error)
+	UpdateUserProfile(
+		ctx context.Context,
+		userID uuid.UUID,
+		req usersdto.UpdateUserProfileRequest,
+	) error
+	UpdateUserConfiguration(
+		ctx context.Context,
+		userID uuid.UUID,
+		req usersdto.UpdateUserConfigurationRequest,
+	) error
 }
 
 type Controller struct {
@@ -278,5 +293,75 @@ func (ctrl *Controller) ChangePassword(c *gin.Context) {
 			http.StatusOK,
 			"contraseña actualizada correctamente",
 		),
+	)
+}
+
+func (ctrl *Controller) GetProfile(c *gin.Context) {
+	userID, err := helper.ValidateUserUUID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	res, err := ctrl.service.GetUserProfile(c.Request.Context(), userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		response.Success(res),
+	)
+}
+
+func (ctrl *Controller) PutUserProfile(c *gin.Context) {
+	var req usersdto.UpdateUserProfileRequest
+
+	if helper.BindAndValidate(c, &req) {
+		return
+	}
+
+	userID, err := helper.ValidateUserUUID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	err = ctrl.service.UpdateUserProfile(c.Request.Context(), userID, req)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		response.Success("Perfil actualizado exitosamente"),
+	)
+}
+
+func (ctrl *Controller) PutUserConfigurationProfile(c *gin.Context) {
+	var req usersdto.UpdateUserConfigurationRequest
+
+	if helper.BindAndValidate(c, &req) {
+		return
+	}
+
+	userID, err := helper.ValidateUserUUID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	err = ctrl.service.UpdateUserConfiguration(c.Request.Context(), userID, req)
+
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		response.Success("Configuración de perfil actualizada exitosamente"),
 	)
 }
