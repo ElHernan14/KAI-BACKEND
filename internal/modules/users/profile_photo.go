@@ -10,7 +10,7 @@ import (
 
 const (
 	profileUploadDir       = "uploads/profiles"
-	defaultProfilePhotoURL = "/uploads/profiles/default-avatar.png"
+	defaultProfilePhotoURL = "/uploads/profiles/default-avatar.webp"
 	maxProfilePhotoMB      = 5
 )
 
