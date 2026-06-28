@@ -2,6 +2,7 @@ package habitcompletion
 
 import (
 	"context"
+	"log"
 
 	habitsdto "kai-back/internal/modules/habits/dto"
 	habit "kai-back/internal/modules/habits/repository"
@@ -58,6 +59,7 @@ func (s *Service) CompleteHabit(
 	if err != nil {
 		return nil, err
 	}
+	log.Print("fin ensure")
 
 	err = s.transactionManager.WithTransaction(
 		ctx,
@@ -102,7 +104,12 @@ func (s *Service) CompleteHabit(
 				return err
 			}
 
-			if err = s.generateMotivationalMessage(ctx, tx, userID, streak, dominantAttribute); err != nil {
+			if evolution.EventActive {
+				err = s.generateEvolutionMessage(ctx, tx, userID, evolution)
+			} else {
+				err = s.generateMotivationalMessage(ctx, tx, userID, streak, dominantAttribute)
+			}
+			if err != nil {
 				return err
 			}
 
@@ -126,6 +133,7 @@ func (s *Service) CompleteHabit(
 					Etapa:      evolution.State.CurrentStage,
 					IniciadoEn: evolution.State.LastEvolution,
 					ExpiraEn:   evolution.EventExpiresAt,
+					Mensaje:    evolution.Message,
 				},
 			}
 
@@ -136,7 +144,8 @@ func (s *Service) CompleteHabit(
 		return nil, err
 	}
 
-	if err = s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID); err != nil {
+	log.Print("fin habits - comienza sync")
+	if err = s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID, true); err != nil {
 		return nil, err
 	}
 

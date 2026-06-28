@@ -4,13 +4,77 @@ import (
 	"context"
 	"errors"
 	usersmodel "kai-back/internal/modules/users/models"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Repository struct {
 	db *gorm.DB
+}
+
+func (r *Repository) FindUserSyncState(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+) (*usersmodel.User, error) {
+	var user usersmodel.User
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	query := db.WithContext(ctx).
+		Select("id", "habit_records_synced_at", "activity_sync_at").
+		Where("id = ?", userID)
+	if tx != nil {
+		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+
+	if err := query.First(&user).Error; err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *Repository) UpdateHabitRecordsSyncedAt(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	syncedAt time.Time,
+) error {
+	return r.updateSyncTimestamp(ctx, tx, userID, "habit_records_synced_at", syncedAt)
+}
+
+func (r *Repository) UpdateActivitySyncAt(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	syncedAt time.Time,
+) error {
+	return r.updateSyncTimestamp(ctx, tx, userID, "activity_sync_at", syncedAt)
+}
+
+func (r *Repository) updateSyncTimestamp(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	column string,
+	syncedAt time.Time,
+) error {
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	return db.WithContext(ctx).
+		Model(&usersmodel.User{}).
+		Where("id = ?", userID).
+		Update(column, syncedAt).
+		Error
 }
 
 func NewRepository(db *gorm.DB) *Repository {

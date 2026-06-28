@@ -361,12 +361,13 @@ func (r *Repository) DeactivateHabit(
 
 func (r *Repository) FindActiveUserHabits(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 ) ([]habitsmodel.UserHabit, error) {
 
 	var habits []habitsmodel.UserHabit
 
-	err := r.db.
+	err := r.dbFromTx(tx).
 		WithContext(ctx).
 		Where("usuario_id = ?", userID).
 		Where("activo = true").
@@ -382,13 +383,14 @@ func (r *Repository) FindActiveUserHabits(
 
 func (r *Repository) FindTodayRecords(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uuid.UUID,
 	date time.Time,
 ) ([]habitsmodel.HabitRecord, error) {
 
 	var records []habitsmodel.HabitRecord
 
-	err := r.db.
+	err := r.dbFromTx(tx).
 		WithContext(ctx).
 		Where("usuario_id = ?", userID).
 		Where("fecha = CURRENT_DATE").

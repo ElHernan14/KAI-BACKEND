@@ -168,7 +168,7 @@ func (s *Service) GetUserProfile(
 		return nil, err
 	}
 
-	if err := s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID); err != nil {
+	if err := s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID, false); err != nil {
 		return nil, err
 	}
 
@@ -193,6 +193,7 @@ func (s *Service) GetUserProfile(
 			Nombre:        user.Name,
 			Email:         user.Email,
 			Username:      user.Username,
+			FotoPerfil:    findProfilePhotoURL(userID),
 			PerfilBase:    user.BaseProfile,
 			EtapaKai:      user.KaiStage,
 			FechaRegistro: user.RegisteredAt,

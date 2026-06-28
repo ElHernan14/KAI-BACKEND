@@ -13,6 +13,7 @@ type UserProfileDataResponse struct {
 	Nombre        string    `json:"nombre"`
 	Email         string    `json:"email"`
 	Username      *string   `json:"username"`
+	FotoPerfil    *string   `json:"foto_perfil"`
 	PerfilBase    *string   `json:"perfil_base"`
 	EtapaKai      string    `json:"etapa_kai"`
 	FechaRegistro time.Time `json:"fecha_registro"`

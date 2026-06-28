@@ -26,4 +26,5 @@ type EvolutionEventResponse struct {
 	Etapa      string     `json:"etapa,omitempty"`
 	IniciadoEn *time.Time `json:"iniciado_en,omitempty"`
 	ExpiraEn   *time.Time `json:"expira_en,omitempty"`
+	Mensaje    *string    `json:"mensaje,omitempty"`
 }

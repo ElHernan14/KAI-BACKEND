@@ -3,6 +3,7 @@ package home
 import (
 	"context"
 	"testing"
+	"time"
 
 	repository "kai-back/internal/modules/home/repository"
 
@@ -12,6 +13,19 @@ import (
 type homeRepositoryStub struct {
 	evolutionMessage *string
 	fallbackMessage  *string
+}
+
+func TestIsFirstInteractionToday(t *testing.T) {
+	now := time.Date(2026, time.June, 26, 18, 0, 0, 0, time.Local)
+	sameDay := time.Date(2026, time.June, 26, 8, 0, 0, 0, time.Local)
+	previousDay := time.Date(2026, time.June, 25, 23, 0, 0, 0, time.Local)
+
+	if isFirstInteractionToday(&sameDay, now) {
+		t.Fatal("no debe generar otro saludo durante el mismo dia")
+	}
+	if !isFirstInteractionToday(&previousDay, now) {
+		t.Fatal("debe generar saludo en el primer ingreso de un nuevo dia")
+	}
 }
 
 func (s *homeRepositoryStub) FindKaiSummary(context.Context, uuid.UUID) (*repository.KaiSummaryRow, error) {

@@ -10,5 +10,6 @@ type ServicePort interface {
 	SyncUserActivityState(
 		ctx context.Context,
 		userID uuid.UUID,
+		force bool,
 	) error
 }

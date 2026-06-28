@@ -1,6 +1,8 @@
 package useractivitysynchronization
 
 const (
+	returnMessageAfterInactiveDays = 3
+
 	KaiStateCurious  = "CURIOSO"
 	KaiStateProud    = "ORGULLOSO"
 	KaiStateSleeping = "DORMIDO"

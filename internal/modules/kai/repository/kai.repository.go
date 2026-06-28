@@ -3,6 +3,7 @@ package kai
 import (
 	"context"
 	kaimodel "kai-back/internal/modules/kai/models"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -192,8 +193,12 @@ func (r *Repository) UpdateLastMessage(
 	userID uuid.UUID,
 	message string,
 ) error {
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
 
-	return tx.
+	return db.
 		WithContext(ctx).
 		Model(&kaimodel.KaiState{}).
 		Where("usuario_id = ?", userID).
@@ -201,6 +206,24 @@ func (r *Repository) UpdateLastMessage(
 			"ultimo_mensaje",
 			message,
 		).
+		Error
+}
+
+func (r *Repository) UpdateLastInteraction(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	interaction time.Time,
+) error {
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	return db.WithContext(ctx).
+		Model(&kaimodel.KaiState{}).
+		Where("usuario_id = ?", userID).
+		Update("ultima_interaccion", interaction).
 		Error
 }
 

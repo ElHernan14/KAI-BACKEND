@@ -105,13 +105,73 @@ func (r *MessageRepository) FindRandomMessageByRules(
 	return &message, nil
 }
 
+func (r *MessageRepository) FindRandomMessageByType(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	messageType string,
+) (*messagesmodel.KaiMessage, error) {
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	baseQuery := db.WithContext(ctx).
+		Model(&messagesmodel.KaiMessage{}).
+		Where("tipo = ? AND activo = true", messageType)
+
+	var message messagesmodel.KaiMessage
+	err := baseQuery.
+		Where(`NOT EXISTS (
+			SELECT 1
+			FROM mensajes_usuario mu
+			WHERE mu.usuario_id = ?
+			AND mu.mensaje_kai_id = mensajes_kai.id
+		)`, userID).
+		Order("RANDOM()").
+		First(&message).
+		Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = baseQuery.Order("RANDOM()").First(&message).Error
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &message, nil
+}
+
+func (r *MessageRepository) HasUserMessages(
+	ctx context.Context,
+	userID uuid.UUID,
+) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&messagesmodel.UserMessage{}).
+		Where("usuario_id = ?", userID).
+		Limit(1).
+		Count(&count).
+		Error
+
+	return count > 0, err
+}
+
 func (r *MessageRepository) CreateUserMessage(
 	ctx context.Context,
 	tx *gorm.DB,
 	userMessage *messagesmodel.UserMessage,
 ) error {
 
-	return tx.
+	db := r.db
+	if tx != nil {
+		db = tx
+	}
+
+	return db.
 		WithContext(ctx).
 		Create(userMessage).
 		Error

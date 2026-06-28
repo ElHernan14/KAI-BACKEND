@@ -127,6 +127,15 @@ func truncateDate(
 	)
 }
 
+func shouldShowReturnMessage(lastInteraction *time.Time, now time.Time) bool {
+	if lastInteraction == nil {
+		return false
+	}
+
+	return int(truncateDate(now).Sub(truncateDate(*lastInteraction)).Hours()/24) >
+		returnMessageAfterInactiveDays
+}
+
 func (s *Service) calculateEnergy(
 	currentEnergy int,
 	inactiveDays int,

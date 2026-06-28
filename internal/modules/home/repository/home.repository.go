@@ -18,14 +18,15 @@ type Repository struct {
 }
 
 type KaiSummaryRow struct {
-	CurrentState  string
-	CurrentStage  string
-	Energy        int
-	KaiImage      *string
-	LastMessage   *string
-	RecoveryMode  bool
-	BondLevel     int
-	LastEvolution *time.Time
+	CurrentState    string
+	CurrentStage    string
+	Energy          int
+	KaiImage        *string
+	LastMessage     *string
+	RecoveryMode    bool
+	BondLevel       int
+	LastEvolution   *time.Time
+	LastInteraction *time.Time
 }
 
 type DailyHabitRow struct {
@@ -52,7 +53,8 @@ func (r *Repository) FindKaiSummary(ctx context.Context, userID uuid.UUID) (*Kai
 			ultimo_mensaje AS last_message,
 			modo_recuperacion AS recovery_mode,
 			nivel_vinculo AS bond_level,
-			ultima_evolucion AS last_evolution
+			ultima_evolucion AS last_evolution,
+			ultima_interaccion AS last_interaction
 		`).
 		Where("usuario_id = ?", userID).
 		Take(&row).
@@ -135,7 +137,13 @@ func (r *Repository) FindFallbackMessage(ctx context.Context) (*string, error) {
 		Model(&messagesmodel.KaiMessage{}).
 		Select("mensaje").
 		Where("activo = true").
-		Where("tipo <> ? AND (contexto IS NULL OR contexto <> ?)", "evolucion", "evolucion").
+		Where("tipo NOT IN ?", []string{
+			messagesmodel.MessageTypeWelcome,
+			messagesmodel.MessageTypeGreeting,
+			messagesmodel.MessageTypeReturn,
+			messagesmodel.MessageTypeEvolutionYoung,
+			messagesmodel.MessageTypeEvolutionAdult,
+		}).
 		Order("created_at DESC").
 		Take(&message).
 		Error
@@ -159,7 +167,10 @@ func (r *Repository) FindRandomEvolutionMessage(ctx context.Context) (*string, e
 		Model(&messagesmodel.KaiMessage{}).
 		Select("mensaje").
 		Where("activo = true").
-		Where("(tipo = ? OR contexto = ?)", "evolucion", "evolucion").
+		Where("tipo IN ? OR contexto = ?", []string{
+			messagesmodel.MessageTypeEvolutionYoung,
+			messagesmodel.MessageTypeEvolutionAdult,
+		}, "evolucion").
 		Order("RANDOM()").
 		Take(&message).
 		Error

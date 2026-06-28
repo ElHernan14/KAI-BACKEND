@@ -59,8 +59,18 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 		From:     appConfig.SMTP.From,
 	})
 	transaction := transactionGorm.NewGormTransactionManager(db)
-	habitsDailyRecordsService := habitsServ.NewHabitsDailyRecordsService(habitsRepository)
-	userActivitySyncService := userActivitySynchronizationService.New(transaction, userRepository, habitsRepository, kaiRepository)
+	habitsDailyRecordsService := habitsServ.NewHabitsDailyRecordsService(
+		habitsRepository,
+		userRepository,
+		transaction,
+	)
+	userActivitySyncService := userActivitySynchronizationService.New(
+		transaction,
+		userRepository,
+		habitsRepository,
+		kaiRepository,
+		messageRepo,
+	)
 	habitCompletionService := habitCompletionService.NewService(
 		habitsRepository,
 		xpRepository,
@@ -89,7 +99,14 @@ func NewAppContainer(db *gorm.DB, cfg config.Config) *AppContainer {
 	)
 	userService := usermodule.NewService(userRepository, xpRepository, userActivitySyncService, habitsDailyRecordsService)
 	habitsService := habitsServ.NewService(habitsRepository, habitsDailyRecordsService)
-	homeService := homemodule.NewService(homeRepository, userRepository, userActivitySyncService, habitsDailyRecordsService)
+	homeService := homemodule.NewService(
+		homeRepository,
+		userRepository,
+		kaiRepository,
+		messageRepo,
+		userActivitySyncService,
+		habitsDailyRecordsService,
+	)
 	kaiService := kaiModule.NewKaiService(kaiRepository, messageRepo, habitsRepository, xpRepository, habitsDailyRecordsService, userActivitySyncService)
 
 	//controllers

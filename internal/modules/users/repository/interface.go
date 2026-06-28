@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	usersmodel "kai-back/internal/modules/users/models"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -43,5 +44,25 @@ type UsersRepository interface {
 		tx *gorm.DB,
 		userID uuid.UUID,
 		updates map[string]interface{},
+	) error
+
+	FindUserSyncState(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+	) (*usersmodel.User, error)
+
+	UpdateHabitRecordsSyncedAt(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		syncedAt time.Time,
+	) error
+
+	UpdateActivitySyncAt(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		syncedAt time.Time,
 	) error
 }

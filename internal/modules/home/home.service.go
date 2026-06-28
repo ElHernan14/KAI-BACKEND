@@ -9,6 +9,9 @@ import (
 	homedto "kai-back/internal/modules/home/dto"
 	repository "kai-back/internal/modules/home/repository"
 	kaievolution "kai-back/internal/modules/kai/evolution"
+	kairepo "kai-back/internal/modules/kai/repository"
+	messagesmodel "kai-back/internal/modules/messages/models"
+	messagesrepo "kai-back/internal/modules/messages/repository"
 	userrepo "kai-back/internal/modules/users/repository"
 	userActivitySynchronizationService "kai-back/internal/services/user_activity_synchronization"
 	errorHandler "kai-back/internal/shared/errors"
@@ -23,6 +26,8 @@ type ServicePort interface {
 type Service struct {
 	repository                         repository.HomeRepository
 	UserRepository                     userrepo.UsersRepository
+	KaiRepository                      kairepo.KaiRepository
+	MessageRepository                  messagesrepo.MessageRepositoryPort
 	habitsDailyRecordsService          habitsDailyRecordsService.HabitsDailyRecordsServicePort
 	UserActivitySynchronizationService userActivitySynchronizationService.ServicePort
 }
@@ -30,12 +35,16 @@ type Service struct {
 func NewService(
 	repository repository.HomeRepository,
 	userRepo userrepo.UsersRepository,
+	kaiRepo kairepo.KaiRepository,
+	messageRepo messagesrepo.MessageRepositoryPort,
 	userActivitySyncService userActivitySynchronizationService.ServicePort,
 	habitsDailyRecordsService habitsDailyRecordsService.HabitsDailyRecordsServicePort,
 ) *Service {
 	return &Service{
 		repository:                         repository,
 		UserRepository:                     userRepo,
+		KaiRepository:                      kaiRepo,
+		MessageRepository:                  messageRepo,
 		UserActivitySynchronizationService: userActivitySyncService,
 		habitsDailyRecordsService:          habitsDailyRecordsService,
 	}
@@ -45,7 +54,7 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 	if err := s.habitsDailyRecordsService.EnsureTodayHabitRecords(ctx, userID); err != nil {
 		return nil, err
 	}
-	if err := s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID); err != nil {
+	if err := s.UserActivitySynchronizationService.SyncUserActivityState(ctx, userID, false); err != nil {
 		return nil, err
 	}
 
@@ -72,8 +81,9 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 		return nil, err
 	}
 
-	evolutionActive, evolutionExpiresAt := kaievolution.EventWindow(kai.LastEvolution, time.Now())
-	message, err := s.resolveMessage(ctx, kai.LastMessage, evolutionActive)
+	now := time.Now()
+	evolutionActive, evolutionExpiresAt := kaievolution.EventWindow(kai.LastEvolution, now)
+	message, err := s.resolveHomeMessage(ctx, userID, kai, evolutionActive, now)
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +118,7 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 			Stage:     kai.CurrentStage,
 			StartedAt: kai.LastEvolution,
 			ExpiresAt: evolutionExpiresAt,
+			Message:   evolutionMessage(evolutionActive, message),
 		},
 		TotalXP:       totalXP,
 		CurrentStreak: user.GlobalStreak,
@@ -118,6 +129,109 @@ func (s *Service) GetHome(ctx context.Context, userID uuid.UUID) (*homedto.HomeR
 			Pending:   total - completed,
 		},
 	}, nil
+}
+
+func (s *Service) resolveHomeMessage(
+	ctx context.Context,
+	userID uuid.UUID,
+	kai *repository.KaiSummaryRow,
+	evolutionActive bool,
+	now time.Time,
+) (string, error) {
+	if evolutionActive {
+		messageType := evolutionMessageType(kai.CurrentStage)
+		lastMessage, err := s.MessageRepository.FindLastUserMessage(ctx, nil, userID)
+		if err != nil {
+			return "", err
+		}
+		if lastMessage != nil && lastMessage.KaiMessage != nil &&
+			lastMessage.KaiMessage.Type == messageType {
+			return lastMessage.KaiMessage.Message, nil
+		}
+
+		return s.selectAndStoreMessage(ctx, userID, messageType, false, now, kai.LastMessage)
+	}
+
+	hasMessages, err := s.MessageRepository.HasUserMessages(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if !hasMessages {
+		return s.selectAndStoreMessage(
+			ctx, userID, messagesmodel.MessageTypeWelcome, true, now, kai.LastMessage,
+		)
+	}
+
+	if isFirstInteractionToday(kai.LastInteraction, now) {
+		return s.selectAndStoreMessage(
+			ctx, userID, messagesmodel.MessageTypeGreeting, true, now, kai.LastMessage,
+		)
+	}
+
+	return s.resolveMessage(ctx, kai.LastMessage, false)
+}
+
+func (s *Service) selectAndStoreMessage(
+	ctx context.Context,
+	userID uuid.UUID,
+	messageType string,
+	updateInteraction bool,
+	now time.Time,
+	currentMessage *string,
+) (string, error) {
+	message, err := s.MessageRepository.FindRandomMessageByType(ctx, nil, userID, messageType)
+	if err != nil {
+		return "", err
+	}
+
+	if message != nil {
+		if err := s.MessageRepository.CreateUserMessage(ctx, nil, &messagesmodel.UserMessage{
+			UserID:    userID,
+			MessageID: message.ID,
+			Read:      false,
+			ShownAt:   now,
+		}); err != nil {
+			return "", err
+		}
+		if err := s.KaiRepository.UpdateLastMessage(ctx, nil, userID, message.Message); err != nil {
+			return "", err
+		}
+	}
+
+	if updateInteraction {
+		if err := s.KaiRepository.UpdateLastInteraction(ctx, nil, userID, now); err != nil {
+			return "", err
+		}
+	}
+
+	if message != nil {
+		return message.Message, nil
+	}
+	return s.resolveMessage(ctx, currentMessage, false)
+}
+
+func isFirstInteractionToday(lastInteraction *time.Time, now time.Time) bool {
+	if lastInteraction == nil {
+		return true
+	}
+
+	year, month, day := lastInteraction.In(now.Location()).Date()
+	nowYear, nowMonth, nowDay := now.Date()
+	return year != nowYear || month != nowMonth || day != nowDay
+}
+
+func evolutionMessageType(stage string) string {
+	if kaievolution.NormalizeStage(stage) == "adulto" {
+		return messagesmodel.MessageTypeEvolutionAdult
+	}
+	return messagesmodel.MessageTypeEvolutionYoung
+}
+
+func evolutionMessage(active bool, message string) string {
+	if !active {
+		return ""
+	}
+	return message
 }
 
 func (s *Service) resolveMessage(

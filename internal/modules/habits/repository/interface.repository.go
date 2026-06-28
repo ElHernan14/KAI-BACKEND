@@ -105,11 +105,13 @@ type HabitsRepository interface {
 
 	FindActiveUserHabits(
 		ctx context.Context,
+		tx *gorm.DB,
 		userID uuid.UUID,
 	) ([]habitsmodel.UserHabit, error)
 
 	FindTodayRecords(
 		ctx context.Context,
+		tx *gorm.DB,
 		userID uuid.UUID,
 		date time.Time,
 	) ([]habitsmodel.HabitRecord, error)

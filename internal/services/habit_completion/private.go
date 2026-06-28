@@ -409,6 +409,45 @@ type evolutionResult struct {
 	State          *kaimodel.KaiState
 	EventActive    bool
 	EventExpiresAt *time.Time
+	Message        *string
+}
+
+func (s *Service) generateEvolutionMessage(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uuid.UUID,
+	evolution *evolutionResult,
+) error {
+	messageType := messagesmodel.MessageTypeEvolutionYoung
+	if kaievolution.NormalizeStage(evolution.State.CurrentStage) == "adulto" {
+		messageType = messagesmodel.MessageTypeEvolutionAdult
+	}
+
+	message, err := s.messageRepo.FindRandomMessageByType(ctx, tx, userID, messageType)
+	if err != nil {
+		return errorHandler.NewAppError(
+			http.StatusInternalServerError,
+			"error al buscar un mensaje de evolucion",
+		)
+	}
+	if message == nil {
+		return nil
+	}
+
+	if err := s.messageRepo.CreateUserMessage(ctx, tx, &messagesmodel.UserMessage{
+		UserID:    userID,
+		MessageID: message.ID,
+		Read:      false,
+		ShownAt:   time.Now(),
+	}); err != nil {
+		return err
+	}
+	if err := s.kaiRepo.UpdateLastMessage(ctx, tx, userID, message.Message); err != nil {
+		return err
+	}
+
+	evolution.Message = &message.Message
+	return nil
 }
 
 func (s *Service) updateKaiState(

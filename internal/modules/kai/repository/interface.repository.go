@@ -2,6 +2,7 @@ package kai
 
 import (
 	"context"
+	"time"
 
 	kaimodel "kai-back/internal/modules/kai/models"
 
@@ -60,6 +61,13 @@ type KaiRepository interface {
 		tx *gorm.DB,
 		userID uuid.UUID,
 		message string,
+	) error
+
+	UpdateLastInteraction(
+		ctx context.Context,
+		tx *gorm.DB,
+		userID uuid.UUID,
+		interaction time.Time,
 	) error
 
 	UpdateTemporalState(

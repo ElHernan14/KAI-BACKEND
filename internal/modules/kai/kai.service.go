@@ -74,6 +74,7 @@ func (s *KaiService) GetKaiDashboard(
 	err = s.UserActivitySynchronizationService.SyncUserActivityState(
 		ctx,
 		userID,
+		false,
 	)
 	if err != nil {
 		return nil, err

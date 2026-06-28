@@ -26,6 +26,7 @@ type EvolutionEventResponse struct {
 	Stage     string     `json:"etapa,omitempty"`
 	StartedAt *time.Time `json:"iniciado_en,omitempty"`
 	ExpiresAt *time.Time `json:"expira_en,omitempty"`
+	Message   string     `json:"mensaje,omitempty"`
 }
 
 type DailyHabitSummary struct {
