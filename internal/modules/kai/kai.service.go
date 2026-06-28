@@ -157,7 +157,7 @@ func (s *KaiService) GetKaiDashboard(
 			ModoRecuperacion:  state.RecoveryMode,
 			ImagenKai:         state.KaiImage,
 			UltimaEvolucion:   state.LastEvolution,
-			AtributoDominante: state.DominantAttribute.Name,
+			AtributoDominante: dominantAttributeName(state),
 		},
 
 		Atributos: s.mapKaiAttributes(attributes),
@@ -178,6 +178,13 @@ func (s *KaiService) GetKaiDashboard(
 	}, nil
 }
 
+func dominantAttributeName(state *kaimodel.KaiState) string {
+	if state == nil || state.DominantAttribute == nil {
+		return ""
+	}
+
+	return state.DominantAttribute.Name
+}
 func (s *KaiService) mapKaiAttributes(
 	attrs []kaimodel.KaiAttribute,
 ) []kaidto.KaiAttributeResponse {
