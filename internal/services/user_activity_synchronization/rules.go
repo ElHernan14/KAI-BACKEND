@@ -2,6 +2,7 @@ package useractivitysynchronization
 
 const (
 	returnMessageAfterInactiveDays = 3
+	maxSaneInactiveDays            = 36500
 
 	KaiStateCurious  = "CURIOSO"
 	KaiStateProud    = "ORGULLOSO"

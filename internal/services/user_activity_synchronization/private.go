@@ -24,44 +24,7 @@ func (s *Service) findLastCompletedHabitDate(
 func (s *Service) calculateInactiveDays(
 	lastActivity *time.Time,
 ) int {
-
-	if lastActivity == nil {
-		return 0
-	}
-
-	now := time.Now()
-
-	lastDate := time.Date(
-		lastActivity.Year(),
-		lastActivity.Month(),
-		lastActivity.Day(),
-		0,
-		0,
-		0,
-		0,
-		time.Local,
-	)
-
-	today := time.Date(
-		now.Year(),
-		now.Month(),
-		now.Day(),
-		0,
-		0,
-		0,
-		0,
-		time.Local,
-	)
-
-	days := int(
-		today.Sub(lastDate).Hours() / 24,
-	)
-
-	if days < 0 {
-		return 0
-	}
-
-	return days
+	return calendarDaysBetween(lastActivity, time.Now())
 }
 
 func (s *Service) calculateGlobalStreak(
@@ -128,12 +91,26 @@ func truncateDate(
 }
 
 func shouldShowReturnMessage(lastInteraction *time.Time, now time.Time) bool {
-	if lastInteraction == nil {
-		return false
+	return calendarDaysBetween(lastInteraction, now) >
+		returnMessageAfterInactiveDays
+}
+
+func calendarDaysBetween(from *time.Time, to time.Time) int {
+	if from == nil || from.IsZero() {
+		return 0
 	}
 
-	return int(truncateDate(now).Sub(truncateDate(*lastInteraction)).Hours()/24) >
-		returnMessageAfterInactiveDays
+	fromDate := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+	toDate := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)
+	if !fromDate.Before(toDate) {
+		return 0
+	}
+
+	return int((toDate.Unix() - fromDate.Unix()) / int64(24*time.Hour/time.Second))
+}
+
+func hasInvalidInactiveDays(days int) bool {
+	return days < 0 || days > maxSaneInactiveDays
 }
 
 func (s *Service) calculateEnergy(

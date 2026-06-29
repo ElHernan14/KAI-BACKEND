@@ -54,7 +54,9 @@ func (s *Service) SyncUserActivityState(
 			if err != nil {
 				return err
 			}
-			if !force && utils.IsSameCalendarDay(user.ActivitySyncAt, now) {
+			if !force &&
+				utils.IsSameCalendarDay(user.ActivitySyncAt, now) &&
+				!hasInvalidInactiveDays(user.InactiveDays) {
 				return nil
 			}
 
@@ -102,6 +104,20 @@ func (s *Service) SyncUserActivityState(
 				return err
 			}
 			if lastActivity == nil {
+				if err := s.userRepository.UpdateActivityStats(ctx, tx, userID, 0, 0); err != nil {
+					return err
+				}
+				if err := s.kaiRepository.UpdateTemporalState(
+					ctx,
+					tx,
+					userID,
+					kaiState.Energy,
+					s.determineKaiState(0, 0),
+					s.determineKaiMode(0),
+					0,
+				); err != nil {
+					return err
+				}
 				return s.userRepository.UpdateActivitySyncAt(ctx, tx, userID, now)
 			}
 

@@ -597,6 +597,9 @@ func (r *Repository) FindLastCompletedHabitDate(
 	if err != nil {
 		return nil, err
 	}
+	if !lastDate.Valid || lastDate.Time.IsZero() {
+		return nil, nil
+	}
 
 	return &lastDate.Time, nil
 }

@@ -27,7 +27,7 @@ func (r *Repository) FindUserSyncState(
 	}
 
 	query := db.WithContext(ctx).
-		Select("id", "habit_records_synced_at", "activity_sync_at").
+		Select("id", "dias_inactivo", "habit_records_synced_at", "activity_sync_at").
 		Where("id = ?", userID)
 	if tx != nil {
 		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
